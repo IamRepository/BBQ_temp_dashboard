@@ -1,85 +1,38 @@
-# Cook Profile Dashboard
+# Cook Profile Dashboard v1.1
 
-A GitHub-ready Streamlit application for uploading, organizing, customizing and comparing cook temperature profiles. It is inspired by the visual structure of the Brisket Session Analyser, but it performs no tenderness or rendering analysis.
+Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
 
-## Features
-
-- Upload one or more CSV, XLSX or XLS files
-- Read all Excel worksheets
-- Detect date/time, elapsed-time and temperature columns
-- Create a separate profile for each detected temperature channel
-- Overlay multiple profiles in an interactive Plotly chart
-- Hide or show profiles
-- Rename profiles and channels
-- Set line colors and time offsets
-- Switch between Celsius and Fahrenheit
-- Use elapsed time or available clock timestamps
-- Export visible profile data as a ZIP of CSV files
-- Built-in example profiles
-
-## Repository structure
-
-```text
-cook-profile-dashboard/
-├── .streamlit/config.toml
-├── sample_data/
-│   ├── example_profiles.csv
-│   └── example_profiles.xlsx
-├── app.py
-├── chart_builder.py
-├── example_data.py
-├── export_utils.py
-├── models.py
-├── profile_loader.py
-├── profile_processing.py
-├── requirements.txt
-├── README.md
-└── .gitignore
-```
+## v1.1 changes
+- Removed Fahrenheit and all temperature conversion logic
+- Removed example-data loading from the interface
+- Improved summary cards: visible profiles, unique channels, duration range and temperature range
+- Added selected-profile statistics: name, duration, maximum temperature and sample count
+- Added original, peak, end and clock-time alignment modes
+- Kept CSV, XLSX and XLS multi-file import, Plotly visualization, profile customization and CSV ZIP export
 
 ## Run locally
-
-1. Create and activate a Python virtual environment.
-2. Install dependencies:
-
 ```bash
+python -m venv .venv
+# Windows: .venv\Scripts\activate
+# macOS/Linux: source .venv/bin/activate
 pip install -r requirements.txt
-```
-
-3. Start the application:
-
-```bash
 streamlit run app.py
 ```
 
-## Deploy from GitHub to Streamlit Community Cloud
+## GitHub setup
+1. Create a repository named `cook-profile-dashboard`.
+2. Extract this package and copy the contents of the inner `cook-profile-dashboard` folder into the repository root.
+3. Commit all files to the `main` branch and push to GitHub.
 
-1. Create a GitHub repository and copy these files into the repository root.
-2. Commit and push the files.
-3. In Streamlit Community Cloud, create a new app from the repository.
-4. Select `app.py` as the entry point.
-5. Deploy the app.
+## Streamlit Community Cloud deployment
+1. Sign in to Streamlit Community Cloud using the GitHub account that can access the repository.
+2. Create a new app.
+3. Select the repository and the `main` branch.
+4. Set the entry point to `app.py`.
+5. Deploy. Dependencies are installed from `requirements.txt`.
 
-## Input expectations
-
-The loader searches for a time-like column using names such as `time`, `date`, `timestamp`, `elapsed`, `hour` or `minute`. It searches for temperature-like numeric columns using names such as `temperature`, `temp`, `probe`, `point`, `flat`, `pit`, `ambient`, `cavity` or `grate`.
-
-If no date/time column is found, an appropriate numeric column is used. If neither exists, row number is used as the elapsed-time axis.
-
-Temperatures are assumed to be Celsius on import. Fahrenheit display is a visualization conversion.
-
-## Example data
-
-The `sample_data` folder contains equivalent CSV and Excel examples with `Timestamp`, `Point`, `Flat` and `Pit` channels.
-
-## Current design assumptions
-
-- Each temperature column is treated as a separate profile.
-- Duplicate elapsed-time readings keep the last value.
-- Empty rows and columns are removed.
-- Imported data is held in the Streamlit session and is not written to a server database.
-- Profile edits remain available until the Streamlit session ends or the browser session is reset.
-
-## Recommended next development step
-
-Add an import-mapping screen where users can verify the worksheet, time column, temperature columns, source units and profile names before completing an import.
+## Input assumptions
+- Imported temperatures are Celsius.
+- A time-like column is detected automatically.
+- Each detected temperature column becomes one profile.
+- For irregular files, the next recommended enhancement is an import-mapping screen.
