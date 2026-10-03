@@ -14,22 +14,28 @@ if 'profiles' not in st.session_state: st.session_state.profiles=[]
 P=st.session_state.profiles
 with st.sidebar:
     st.header('Data')
-    files=st.file_uploader('Upload CSV or Excel files',type=['csv','xlsx','xls'],accept_multiple_files=True)
-    keep=st.checkbox('Keep existing profiles',True)
-    if st.button('Import uploaded files',type='primary',use_container_width=True,disabled=not files):
+    files=st.file_uploader('Upload CSV or Excel files',type=['csv','xlsx','xls'],accept_multiple_files=True,key='uploaded_profile_files')
+    keep=st.checkbox('Keep existing profiles',True,key='keep_existing_profiles')
+    if st.button('Import uploaded files',type='primary',use_container_width=True,disabled=not files,key='import_profiles_button'):
         try:
             new,msg=load_uploaded_files(files); st.session_state.profiles=(P+new) if keep else new
             for m in msg: st.info(m)
             st.success(f'Imported {len(new)} profiles'); st.rerun()
         except Exception as e: st.error(f'Import failed: {e}')
-    if st.button('Clear all profiles',use_container_width=True): st.session_state.profiles=[]; st.rerun()
+    if st.button('Clear all profiles',use_container_width=True,key='clear_profiles_button'): st.session_state.profiles=[]; st.rerun()
     st.divider(); st.header('Display')
-    alignment=st.selectbox('Alignment',['Original timeline','Align peak','Align end','Clock time'])
-    theme=st.selectbox('Chart theme',['Dark','Light']); grid=st.checkbox('Grid lines',True); legend=st.checkbox('Legend',True); width=st.slider('Line width',1.0,5.0,2.5,.5)
+    alignment=st.selectbox('Alignment',['Original timeline','Align peak','Align end','Clock time'],key='alignment_selector')
+    theme=st.selectbox('Chart theme',['Dark','Light'],key='chart_theme_selector'); grid=st.checkbox('Grid lines',True,key='grid_lines_toggle'); legend=st.checkbox('Legend',True,key='legend_toggle'); width=st.slider('Line width',1.0,5.0,2.5,.5,key='line_width_slider')
 settings={'alignment':alignment,'theme':theme,'grid':grid,'legend':legend,'width':width}
 st.markdown('<div class="kicker">Cook profile studio</div><div class="title">Cook Profile Dashboard</div><div class="note">Upload, customize and compare temperature profiles. All temperatures are handled in degrees Celsius.</div>',unsafe_allow_html=True)
 if not P: st.info('Upload one or more CSV or Excel files to begin.'); st.stop()
-names=[p.name for p in P]; shown=st.multiselect('Profiles shown',names,default=[p.name for p in P if p.visible]); visible=[p for p in P if p.name in shown]
+profile_by_id={p.profile_id:p for p in P}
+profile_ids=list(profile_by_id)
+if st.session_state.get('selected_profile_id') not in profile_by_id:
+    st.session_state.selected_profile_id=profile_ids[0]
+shown_ids=st.multiselect('Profiles shown',profile_ids,default=[p.profile_id for p in P if p.visible],format_func=lambda pid: profile_by_id[pid].name,key='visible_profile_ids')
+visible=[profile_by_id[pid] for pid in shown_ids if pid in profile_by_id]
+for p in P: p.visible=p.profile_id in shown_ids
 channels=len({p.channel for p in visible}); durations=[p.duration_hours for p in visible]; mins=[p.minimum_c for p in visible]; maxs=[p.maximum_c for p in visible]
 c1,c2,c3,c4=st.columns(4)
 c1.metric('Visible profiles',len(visible),f'{len(P)} loaded')
@@ -39,13 +45,24 @@ c4.metric('Temperature range',f'{min(mins):.1f} - {max(maxs):.1f} °C' if mins e
 main,side=st.columns([3.4,1.2],gap='large')
 with side:
     st.subheader('Selected profile')
-    selected=next(p for p in P if p.name==st.selectbox('Profile',names))
-    new=st.text_input('Display name',selected.name); selected.channel=st.text_input('Channel label',selected.channel); selected.offset_hours=st.slider('Time offset (hours)',-24.0,24.0,float(selected.offset_hours),.25); selected.color=st.color_picker('Line color',selected.color)
+    selected_id=st.selectbox('Profile',profile_ids,format_func=lambda pid: profile_by_id[pid].name,key='selected_profile_id')
+    selected=profile_by_id[selected_id]
+    edit_key=f'edit_{selected.profile_id}'
+    new=st.text_input('Display name',selected.name,key=f'{edit_key}_name')
+    channel=st.text_input('Channel label',selected.channel,key=f'{edit_key}_channel')
+    offset=st.slider('Time offset (hours)',-24.0,24.0,float(selected.offset_hours),.25,key=f'{edit_key}_offset')
+    color=st.color_picker('Line color',selected.color,key=f'{edit_key}_color')
+    selected.channel=channel; selected.offset_hours=offset; selected.color=color
     if new!=selected.name and new:
-        if new in names: st.warning('Profile names must be unique.')
-        else: selected.name=new; st.rerun()
-    if st.button('Remove selected profile',use_container_width=True): st.session_state.profiles=[p for p in P if p.profile_id!=selected.profile_id]; st.rerun()
-    st.download_button('Download visible data',profiles_to_zip(visible),'cook_profiles_export.zip','application/zip',use_container_width=True,disabled=not visible)
+        if any(p.name==new and p.profile_id!=selected.profile_id for p in P): st.warning('Profile names must be unique.')
+        else: selected.name=new
+    if st.button('Remove selected profile',use_container_width=True,key=f'remove_{selected.profile_id}'):
+        remaining=[p for p in P if p.profile_id!=selected.profile_id]
+        st.session_state.profiles=remaining
+        st.session_state.selected_profile_id=remaining[0].profile_id if remaining else None
+        st.session_state.visible_profile_ids=[p.profile_id for p in remaining if p.visible]
+        st.rerun()
+    st.download_button('Download visible data',profiles_to_zip(visible),'cook_profiles_export.zip','application/zip',use_container_width=True,disabled=not visible,key='download_visible_profiles')
 with main:
     st.subheader('Temperature Profile Comparison')
     if visible: st.caption(f'{len(visible)} profiles | {channels} channels | {min(durations):.1f} - {max(durations):.1f} h duration range')

@@ -1,6 +1,12 @@
-# Cook Profile Dashboard v1.1
+# Cook Profile Dashboard v1.1.1
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
+
+## v1.1.1 changes
+- Fixed profile-selection crashes by using stable profile IDs
+- Added explicit unique keys to stateful Streamlit widgets
+- Preserved selection across profile changes and renaming
+- Safely resets selection after deleting the active profile
 
 ## v1.1 changes
 - Removed Fahrenheit and all temperature conversion logic
