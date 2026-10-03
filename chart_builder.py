@@ -14,21 +14,21 @@ def _x(profile, mode):
 
 def _palette(mode):
     if mode == 'Dark':
-        return {'bg': '#111827', 'plot': '#111827', 'text': '#E5E7EB', 'muted': '#9CA3AF', 'grid': 'rgba(148,163,184,0.16)', 'border': '#263244'}
-    return {'bg': '#FFFFFF', 'plot': '#FFFFFF', 'text': '#162033', 'muted': '#64748B', 'grid': 'rgba(100,116,139,0.14)', 'border': '#E2E8F0'}
+        return {'bg': '#111827', 'plot': '#111827', 'text': '#E5E7EB', 'muted': '#9CA3AF', 'grid': 'rgba(148,163,184,0.12)', 'border': '#263244'}
+    return {'bg': '#FFFFFF', 'plot': '#FFFFFF', 'text': '#172033', 'muted': '#64748B', 'grid': 'rgba(100,116,139,0.11)', 'border': '#E2E8F0'}
 
 
 def _layout(fig, settings, title):
     colors = _palette(settings['theme'])
     fig.update_layout(
         title={'text': title, 'x': 0.02, 'xanchor': 'left', 'font': {'size': 18}},
-        height=560,
+        height=650,
         paper_bgcolor=colors['bg'],
         plot_bgcolor=colors['plot'],
         font={'color': colors['text'], 'family': 'Inter, Arial, sans-serif'},
         hovermode='x unified',
         showlegend=settings['legend'],
-        legend={'orientation': 'h', 'y': 1.09, 'x': 0.02, 'font': {'size': 11, 'color': colors['muted']}},
+        legend={'orientation': 'h', 'y': 1.08, 'x': 0.02, 'font': {'size': 11, 'color': colors['muted']}, 'bgcolor': 'rgba(0,0,0,0)'},
         hoverlabel={'bgcolor': colors['bg'], 'bordercolor': colors['border'], 'font': {'color': colors['text']}},
         margin={'l': 64, 'r': 30, 't': 86, 'b': 58},
     )

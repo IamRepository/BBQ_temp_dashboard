@@ -38,17 +38,17 @@ with st.sidebar:
 
 is_dark = theme == 'Dark'
 colors = {
-    'page': '#0B1220' if is_dark else '#F5F7FB',
-    'sidebar': '#101827' if is_dark else '#FFFFFF',
+    'page': '#0F172A' if is_dark else '#F8FAFC',
+    'sidebar': '#111827' if is_dark else '#FFFFFF',
     'card': '#111827' if is_dark else '#FFFFFF',
-    'card_alt': '#162033' if is_dark else '#F8FAFC',
+    'card_alt': '#1F2937' if is_dark else '#F8FAFC',
     'text': '#F3F4F6' if is_dark else '#172033',
     'muted': '#9CA3AF' if is_dark else '#64748B',
     'border': '#263244' if is_dark else '#E2E8F0',
     'accent': '#2563EB',
     'accent_hover': '#1D4ED8',
     'danger': '#DC2626',
-    'shadow': '0 10px 30px rgba(0,0,0,.18)' if is_dark else '0 8px 24px rgba(15,23,42,.07)',
+    'shadow': '0 8px 24px rgba(0,0,0,.16)' if is_dark else '0 4px 16px rgba(15,23,42,.055)',
 }
 
 st.markdown(f'''<style>
@@ -79,6 +79,15 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 [data-baseweb="select"]>div,[data-baseweb="input"]>div,.stTextInput input {{background:var(--card-alt)!important;border-color:var(--border)!important;color:var(--text)!important;border-radius:10px!important;}}
 [data-testid="stFileUploaderDropzone"] {{background:var(--card-alt);border:1px dashed var(--border);border-radius:12px;}}
 [data-testid="stExpander"] {{border:1px solid var(--border);border-radius:12px;background:var(--card);}}
+[data-baseweb="tag"] {{background:#E8EEF7!important;color:#334155!important;border:1px solid #D7E0EC!important;border-radius:8px!important;box-shadow:none!important;}}
+[data-baseweb="tag"] span {{color:#334155!important;font-weight:600!important;}}
+[data-baseweb="tag"] svg {{color:#64748B!important;fill:#64748B!important;}}
+[data-baseweb="select"] {{color:var(--text)!important;}}
+[data-testid="stMetricDelta"] svg {{display:none;}}
+[data-testid="stSidebar"] .stButton button {{box-shadow:none!important;}}
+[data-testid="stSidebar"] .stButton button:not([kind="primary"]) {{background:transparent;color:var(--text);}}
+[data-testid="stSidebar"] hr {{margin:1rem 0;}}
+[data-testid="stColorPicker"] button {{border-radius:999px!important;width:2.4rem!important;height:2.4rem!important;border:2px solid var(--card)!important;box-shadow:0 0 0 1px var(--border)!important;}}
 hr {{border-color:var(--border)!important;}}
 </style>''', unsafe_allow_html=True)
 
@@ -104,13 +113,13 @@ mins = [p.minimum_c for p in visible]
 maxs = [p.maximum_c for p in visible]
 
 c1, c2, c3, c4 = st.columns(4)
-c1.metric('VISIBLE PROFILES', len(visible), f'{len(P)} loaded', delta_color='off')
-c2.metric('TEMPERATURE CHANNELS', channels, 'Unique labels', delta_color='off')
+c1.metric('PROFILES', len(visible), f'{len(P)} loaded', delta_color='off')
+c2.metric('CHANNELS', channels, 'Unique labels', delta_color='off')
 c3.metric('DURATION RANGE', f'{min(durations):.1f} - {max(durations):.1f} h' if durations else 'No data', 'Visible profiles', delta_color='off')
 c4.metric('TEMPERATURE RANGE', f'{min(mins):.1f} - {max(maxs):.1f} °C' if mins else 'No data', 'Visible profiles', delta_color='off')
 
 st.write('')
-main, side = st.columns([3.3, 1.15], gap='large')
+main, side = st.columns([4.0, 1.0], gap='large')
 with side:
     with st.container(border=True):
         st.markdown('<div class="card-title">Profile details</div><div class="card-note">Select and customize one profile</div>', unsafe_allow_html=True)
