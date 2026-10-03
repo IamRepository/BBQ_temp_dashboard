@@ -125,13 +125,38 @@ with side:
         st.markdown('<div class="card-title">Profile details</div><div class="card-note">Select and customize one profile</div>', unsafe_allow_html=True)
         selected_id = st.selectbox('Profile', profile_ids, format_func=lambda pid: profile_by_id[pid].name, key='selected_profile_id')
         selected = profile_by_id[selected_id]
-        st.caption(f'{selected.source_file}  |  {len(selected.data):,} samples')
+        st.caption(f'{selected.source_file}  |  {len(selected.plotted_data):,} of {len(selected.data):,} samples shown')
         edit_key = f'edit_{selected.profile_id}'
         new = st.text_input('Display name', selected.name, key=f'{edit_key}_name')
         channel = st.text_input('Channel label', selected.channel, key=f'{edit_key}_channel')
         offset = st.slider('Time offset (hours)', -24.0, 24.0, float(selected.offset_hours), .25, key=f'{edit_key}_offset')
         color = st.color_picker('Line color', selected.color, key=f'{edit_key}_color')
         selected.channel, selected.offset_hours, selected.color = channel, offset, color
+
+        st.markdown('<div class="section-label">VISIBLE DATA WINDOW</div>', unsafe_allow_html=True)
+        total_points = len(selected.data)
+        current_start, current_end = selected.trim_bounds()
+        if total_points > 1:
+            trim_start, trim_end = st.slider(
+                'Trim profile edges',
+                min_value=0,
+                max_value=total_points - 1,
+                value=(current_start, current_end),
+                step=1,
+                key=f'{edit_key}_trim',
+                help='Move the left handle right to remove leading points. Move the right handle left to remove trailing points.',
+            )
+            selected.trim_start, selected.trim_end = trim_start, trim_end
+            shown_points = trim_end - trim_start + 1
+            removed_left = trim_start
+            removed_right = total_points - trim_end - 1
+            st.caption(f'Showing {shown_points:,} of {total_points:,} points  |  Hidden left: {removed_left:,}  |  Hidden right: {removed_right:,}')
+            if st.button('Reset data window', use_container_width=True, key=f'{edit_key}_reset_trim'):
+                selected.trim_start, selected.trim_end = 0, total_points - 1
+                st.session_state[f'{edit_key}_trim'] = (0, total_points - 1)
+                st.rerun()
+        else:
+            st.caption('This profile does not contain enough points to trim.')
         if new != selected.name and new:
             if any(p.name == new and p.profile_id != selected.profile_id for p in P):
                 st.warning('Profile names must be unique.')
@@ -159,7 +184,7 @@ a, b, c, d = st.columns(4)
 a.metric('PROFILE', selected.name)
 b.metric('DURATION', f'{selected.duration_hours:.1f} h')
 c.metric('MAXIMUM TEMPERATURE', f'{selected.maximum_c:.1f} °C')
-d.metric('TOTAL SAMPLES', f'{len(selected.data):,}')
+d.metric('VISIBLE SAMPLES', f'{len(selected.plotted_data):,}', f'{len(selected.data):,} total', delta_color='off')
 with st.container(border=True):
     st.plotly_chart(single(selected, settings), use_container_width=True, config={'displaylogo': False})
     with st.expander('Preview imported data'):

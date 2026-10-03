@@ -1,6 +1,15 @@
-# Cook Profile Dashboard v1.3.0
+# Cook Profile Dashboard v1.4.0
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
+
+## v1.4.0 profile trimming
+- Added a dual-handle point-range slider for each selected profile
+- Moving the left handle hides leading data points
+- Moving the right handle hides trailing data points
+- Trimming updates comparison charts, individual charts, statistics and exported CSV data
+- Added visible, total and hidden-point counts
+- Added a one-click reset for the selected profile data window
+- Original uploaded data remains unchanged in memory
 
 ## v1.3.0 visual cleanup
 - Unified the light surfaces to one page background and white cards
