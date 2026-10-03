@@ -1,6 +1,15 @@
-# Cook Profile Dashboard v1.1.1
+# Cook Profile Dashboard v1.2.0
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
+
+## v1.2.0 visual redesign
+- Light theme is now the default
+- Added an in-app Light and Dark theme selector
+- Reworked spacing, typography, cards, sidebar, controls and chart surfaces
+- Added softer borders, restrained shadows and higher-contrast text
+- Redesigned profile details and comparison chart as distinct cards
+- Improved Plotly legend, grid, hover labels and tooltip content
+- Applied a modern blue accent and accessible neutral palette
 
 ## v1.1.1 changes
 - Fixed profile-selection crashes by using stable profile IDs
