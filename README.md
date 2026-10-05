@@ -1,6 +1,13 @@
-# Cook Profile Dashboard v1.6.1
+# Cook Profile Dashboard v1.6.2
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
+
+## v1.6.2 cosmetic adjustments
+- The explanation of the Smoothing control moved into an info icon next to its heading, shown on hover, like Timeline alignment
+- Chart options no longer sit in a dropdown: Grid lines and Legend are toggles, with Line width below them
+- New Image download setting (PNG or JPEG): the camera icon in the top right of each chart saves the picture in the chosen format at twice the screen size. The chart toolbar is now always visible
+- In Profile details, the profile picker, display name and channel label take the colour of the selected line, and follow it when the line colour or the selected profile changes. Text switches between dark and white for readability
+- Toggles use the same blue as the other selected controls
 
 ## v1.6.1 sidebar tidy-up
 - "Cook Profile" and the Data section moved up; the sidebar collapse arrow no longer takes up a row of its own

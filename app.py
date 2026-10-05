@@ -4,6 +4,7 @@ from chart_builder import comparison, single, deviation
 from analysis import compare
 from export_utils import profiles_to_zip
 from version import VERSION
+import re
 
 st.set_page_config(page_title='Cook Profile Dashboard', page_icon='CP', layout='wide', initial_sidebar_state='expanded')
 
@@ -73,17 +74,59 @@ with st.sidebar:
     alignment_choice = st.segmented_control('Timeline alignment', list(alignment_modes), default='Start', key='alignment_selector', help=alignment_help) or 'Start'
     alignment = alignment_modes[alignment_choice]
     smoothing_options = {'Off': 0, '1 min': 1, '5 min': 5, '10 min': 10}
-    smoothing_choice = st.segmented_control('Smoothing', list(smoothing_options), default='Off', key='smoothing_selector') or 'Off'
+    smoothing_help = (
+        'Rolling average over the chosen time, applied to measured lines.\n\n'
+        '**Off** shows readings exactly as logged.\n\n'
+        'Setpoints and exported data are never smoothed.'
+    )
+    smoothing_choice = st.segmented_control('Smoothing', list(smoothing_options), default='Off', key='smoothing_selector', help=smoothing_help) or 'Off'
     smoothing_minutes = smoothing_options[smoothing_choice]
-    st.caption('Rolling average on measured lines. Setpoints and exported data stay untouched.' if smoothing_minutes else 'Show readings exactly as logged.')
-    with st.expander('Chart options'):
-        grid = st.checkbox('Grid lines', True, key='grid_lines_toggle')
-        legend = st.checkbox('Legend', True, key='legend_toggle')
-        width = st.number_input('Line width', min_value=1.0, max_value=5.0, value=2.5, step=0.5, format='%.1f', key='line_width_input')
+
+    st.markdown('<div class="section-label">CHART OPTIONS</div>', unsafe_allow_html=True)
+    grid = st.toggle('Grid lines', True, key='grid_lines_toggle')
+    legend = st.toggle('Legend', True, key='legend_toggle')
+    width = st.number_input('Line width', min_value=1.0, max_value=5.0, value=2.5, step=0.5, format='%.1f', key='line_width_input')
+    image_format = st.segmented_control('Image download', ['PNG', 'JPEG'], default='PNG', key='image_format_selector',
+                                        help='File type saved by the camera icon in the top right of each chart.') or 'PNG'
     if st.session_state.get('import_messages'):
         with st.expander('Import notes', expanded=True):
             for message in st.session_state.import_messages:
                 st.caption(message)
+
+
+
+def chart_config(filename):
+    # The camera icon in each chart's toolbar saves the picture in the format chosen in the sidebar.
+    safe = re.sub(r'[^A-Za-z0-9._-]+', '_', filename).strip('_') or 'chart'
+    return {'displaylogo': False, 'displayModeBar': True,
+            'toImageButtonOptions': {'format': image_format.lower(), 'filename': safe, 'scale': 2}}
+
+
+def readable_ink(hex_color):
+    # Dark or white text, whichever has the higher contrast on the given background colour.
+    r, g, b = (int(hex_color[i:i + 2], 16) / 255 for i in (1, 3, 5))
+    lin = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in (r, g, b)]
+    lum = 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+    dark_contrast = (lum + 0.05) / (0.0092 + 0.05)   # text #0F172A
+    white_contrast = 1.05 / (lum + 0.05)
+    return '#0F172A' if dark_contrast >= white_contrast else '#FFFFFF'
+
+
+# Profile details: the profile picker, display name and channel label take the selected line's colour.
+tint_css = ''
+active_profile = next((p for p in P if p.profile_id == st.session_state.get('selected_profile_id')), P[0] if P else None)
+if active_profile is not None:
+    tint = st.session_state.get(f'edit_{active_profile.profile_id}_color', active_profile.color)
+    if isinstance(tint, str) and re.fullmatch(r'#[0-9a-fA-F]{6}', tint):
+        ink = readable_ink(tint)
+        for key in ('selected_profile_id', f'edit_{active_profile.profile_id}_name', f'edit_{active_profile.profile_id}_channel'):
+            k = f'.st-key-{key}'
+            tint_css += (
+                f'{k} div:has(> input),{k} [data-testid="stTextInputRootElement"] {{background:{tint}!important;border-color:{tint}!important;}}'
+                f'{k} input {{background:transparent!important;}}'
+                f'{k} div:has(> input) *,{k} [data-testid="stTextInputRootElement"] input {{color:{ink}!important;-webkit-text-fill-color:{ink}!important;}}'
+                f'{k} div:has(> input) svg {{color:{ink}!important;fill:{ink}!important;}}\n'
+            )
 
 is_dark = theme == 'Dark'
 colors = {
@@ -148,13 +191,14 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 [data-testid="stButtonGroup"] button[role="radio"] p {{color:var(--text)!important;}}
 [data-testid="stButtonGroup"] button[role="radio"][aria-checked="true"] {{background:var(--accent)!important;border-color:var(--accent)!important;}}
 [data-testid="stButtonGroup"] button[role="radio"][aria-checked="true"] p {{color:#fff!important;}}
+[data-testid="stCheckbox"] label:has(input[role="switch"]:checked) > div:not([data-testid="stWidgetLabel"]) {{background:var(--accent)!important;}}
 [data-testid="stMetricDelta"] svg {{display:none;}}
 [data-testid="stSidebar"] .stButton button {{box-shadow:none!important;}}
 [data-testid="stSidebar"] .stButton button:not([kind="primary"]) {{background:transparent;color:var(--text);}}
 [data-testid="stSidebar"] hr {{margin:1rem 0;}}
 [data-testid="stColorPicker"] button {{border-radius:999px!important;width:2.4rem!important;height:2.4rem!important;border:2px solid var(--card)!important;box-shadow:0 0 0 1px var(--border)!important;}}
 hr {{border-color:var(--border)!important;}}
-</style>''', unsafe_allow_html=True)
+{tint_css}</style>''', unsafe_allow_html=True)
 
 settings = {'alignment': alignment, 'theme': theme, 'grid': grid, 'legend': legend, 'width': width, 'smoothing_minutes': smoothing_minutes}
 st.markdown(f'<div class="page-kicker">Cook profile studio</div><div class="page-title">Cook Profile Dashboard</div><div class="page-version">Version {VERSION}</div><div class="page-note">Compare uploaded temperature profiles in a clean, consistent workspace. All temperatures are in degrees Celsius.</div>', unsafe_allow_html=True)
@@ -238,7 +282,7 @@ with main:
         st.markdown('<div class="card-title">Temperature profile comparison</div>', unsafe_allow_html=True)
         if visible:
             st.markdown(f'<div class="card-note">{len(visible)} profiles  |  {channels} channels  |  {min(durations):.1f} - {max(durations):.1f} h duration range</div>', unsafe_allow_html=True)
-        st.plotly_chart(comparison(visible, settings), width='stretch', config={'displaylogo': False, 'toImageButtonOptions': {'format': 'png', 'filename': 'cook_profiles'}})
+        st.plotly_chart(comparison(visible, settings), width='stretch', config=chart_config('cook_profiles'))
 
 st.write('')
 setpoints = [p for p in P if p.is_setpoint]
@@ -272,7 +316,7 @@ with st.container(border=True):
             if smoothing_minutes:
                 note += f' The probe is smoothed over {smoothing_minutes} min.'
             st.caption(note)
-            st.plotly_chart(deviation(result, settings), width='stretch', config={'displaylogo': False})
+            st.plotly_chart(deviation(result, settings), width='stretch', config=chart_config('setpoint_difference'))
 
 st.write('')
 st.markdown('<div class="card-title">Selected profile statistics</div><div class="card-note">Key characteristics of the active profile</div>', unsafe_allow_html=True)
@@ -282,6 +326,6 @@ b.metric('DURATION', f'{selected.duration_hours:.1f} h')
 c.metric('MAXIMUM TEMPERATURE', f'{selected.maximum_c:.1f} °C')
 d.metric('VISIBLE SAMPLES', f'{len(selected.plotted_data):,}', f'{len(selected.data):,} total', delta_color='off')
 with st.container(border=True):
-    st.plotly_chart(single(selected, settings), width='stretch', config={'displaylogo': False})
+    st.plotly_chart(single(selected, settings), width='stretch', config=chart_config(selected.name))
     with st.expander('Preview imported data'):
         st.dataframe(selected.export_frame().head(500), width='stretch')
