@@ -1,6 +1,13 @@
-# Cook Profile Dashboard v1.6.0
+# Cook Profile Dashboard v1.6.1
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
+
+## v1.6.1 sidebar tidy-up
+- "Cook Profile" and the Data section moved up; the sidebar collapse arrow no longer takes up a row of its own
+- Import notes now sit below Chart options
+- Chart options: Grid lines and Legend checkboxes, and Line width as an input box with minus and plus buttons (0.5 steps, 1.0 to 5.0; the up and down arrow keys also work)
+- The explanation of the timeline alignment modes moved into an info icon next to the heading, shown on hover and covering all four modes
+- Collapse arrow, info icon and the plus and minus buttons are readable in dark mode
 
 ## v1.6.0 setpoint comparison
 - New "Setpoint vs measured" card: tick "This is a setpoint" for a profile (for example the cooker's own temperature setting), then compare it with any measured probe

@@ -46,7 +46,7 @@ def rename_profile(profile_id, widget_key):
 
 with st.sidebar:
     st.markdown('<div class="side-brand">Cook Profile</div><div class="side-sub">Temperature dashboard</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-label">DATA</div>', unsafe_allow_html=True)
+    st.markdown('<div class="section-label" style="margin-top:.3rem">DATA</div>', unsafe_allow_html=True)
     files = st.file_uploader('Upload CSV or Excel files', type=['csv', 'xlsx', 'xls'], accept_multiple_files=True, key='uploaded_profile_files')
     keep = st.checkbox('Keep existing profiles', True, key='keep_existing_profiles')
     if st.button('Import uploaded files', type='primary', width='stretch', disabled=not files, key='import_profiles_button'):
@@ -60,23 +60,18 @@ with st.sidebar:
         except Exception as exc:
             st.error(f'Import failed: {exc}')
     st.button('Clear all profiles', width='stretch', key='clear_profiles_button', on_click=clear_profiles)
-    if st.session_state.get('import_messages'):
-        with st.expander('Import notes', expanded=True):
-            for message in st.session_state.import_messages:
-                st.caption(message)
 
     st.markdown('<div class="section-label">APPEARANCE</div>', unsafe_allow_html=True)
     theme = st.segmented_control('Theme', ['Light', 'Dark'], default='Light', key='theme_selector') or 'Light'
     alignment_modes = {'Start': 'Original timeline', 'Peak': 'Align peak', 'End': 'Align end', 'Clock': 'Clock time'}
-    alignment_notes = {
-        'Start': 'Every profile starts at zero.',
-        'Peak': 'Every profile is centred on its own highest point.',
-        'End': 'Every profile ends at zero.',
-        'Clock': 'Real time of day, so profiles from different devices line up.',
-    }
-    alignment_choice = st.segmented_control('Timeline alignment', list(alignment_modes), default='Start', key='alignment_selector') or 'Start'
+    alignment_help = (
+        '**Start**: every profile starts at zero.\n\n'
+        '**Peak**: every profile is centred on its own highest point.\n\n'
+        '**End**: every profile ends at zero.\n\n'
+        '**Clock**: real time of day, so profiles from different devices line up.'
+    )
+    alignment_choice = st.segmented_control('Timeline alignment', list(alignment_modes), default='Start', key='alignment_selector', help=alignment_help) or 'Start'
     alignment = alignment_modes[alignment_choice]
-    st.caption(alignment_notes[alignment_choice])
     smoothing_options = {'Off': 0, '1 min': 1, '5 min': 5, '10 min': 10}
     smoothing_choice = st.segmented_control('Smoothing', list(smoothing_options), default='Off', key='smoothing_selector') or 'Off'
     smoothing_minutes = smoothing_options[smoothing_choice]
@@ -84,7 +79,11 @@ with st.sidebar:
     with st.expander('Chart options'):
         grid = st.checkbox('Grid lines', True, key='grid_lines_toggle')
         legend = st.checkbox('Legend', True, key='legend_toggle')
-        width = st.slider('Line width', 1.0, 5.0, 2.5, .5, key='line_width_slider')
+        width = st.number_input('Line width', min_value=1.0, max_value=5.0, value=2.5, step=0.5, format='%.1f', key='line_width_input')
+    if st.session_state.get('import_messages'):
+        with st.expander('Import notes', expanded=True):
+            for message in st.session_state.import_messages:
+                st.caption(message)
 
 is_dark = theme == 'Dark'
 colors = {
@@ -109,11 +108,12 @@ st.markdown(f'''<style>
 .stApp {{background:var(--page); color:var(--text);}}
 [data-testid="stHeader"] {{background:color-mix(in srgb, var(--page) 88%, transparent);}}
 [data-testid="stSidebar"] {{background:var(--sidebar); border-right:1px solid var(--border);}}
-[data-testid="stSidebar"] > div:first-child {{padding-top:1.2rem;}}
+[data-testid="stSidebar"] > div:first-child {{padding-top:.9rem;}}
+[data-testid="stSidebarHeader"] {{position:absolute;top:.6rem;right:.5rem;height:auto;width:auto;padding:0;margin:0;z-index:5;}}
 .block-container {{max-width:1600px; padding-top:4.4rem; padding-bottom:3rem;}}
 h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 .side-brand {{font-size:1.15rem;font-weight:750;color:var(--text);letter-spacing:-.02em}}
-.side-sub {{font-size:.78rem;color:var(--muted);margin-bottom:1.8rem}}
+.side-sub {{font-size:.78rem;color:var(--muted);margin-bottom:.2rem}}
 .section-label {{font-size:.68rem;font-weight:750;letter-spacing:.12em;color:var(--muted);margin:1.5rem 0 .6rem}}
 .page-kicker {{font-size:.72rem;font-weight:750;letter-spacing:.12em;color:var(--accent);text-transform:uppercase}}
 .page-title {{font-size:2rem;font-weight:760;letter-spacing:-.035em;color:var(--text);margin-top:.16rem}}
@@ -136,16 +136,18 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 [data-baseweb="tag"],[data-testid="stMultiSelect"] [data-tag] {{background:{colors['tag_bg']}!important;color:{colors['tag_text']}!important;border:1px solid {colors['tag_border']}!important;border-radius:8px!important;box-shadow:none!important;}}
 [data-baseweb="tag"] span,[data-testid="stMultiSelect"] [data-tag] span {{color:{colors['tag_text']}!important;font-weight:600!important;}}
 [data-baseweb="tag"] svg,[data-testid="stMultiSelect"] [data-tag] svg {{color:{colors['muted']}!important;fill:{colors['muted']}!important;}}
-[data-testid="stSidebar"] [data-testid="stButtonGroup"] button {{padding-left:.55rem!important;padding-right:.55rem!important;font-size:.85rem;}}
+[data-testid="stSidebar"] [data-testid="stButtonGroup"] button[role="radio"] {{padding-left:.55rem!important;padding-right:.55rem!important;font-size:.85rem;}}
 [data-baseweb="select"] {{color:var(--text)!important;}}
 [data-testid="stSelectbox"] div:has(> input),[data-testid="stMultiSelect"] div:has(> input),[data-testid="stNumberInput"] div:has(> input),[data-testid="stTextInputRootElement"] {{background:var(--card-alt)!important;border-color:var(--border)!important;border-radius:10px!important;}}
 [data-testid="stSelectbox"] input,[data-testid="stNumberInput"] input,[data-testid="stTextInputField"] {{color:var(--text)!important;-webkit-text-fill-color:var(--text)!important;}}
+[data-testid="stTooltipIcon"],[data-testid="stSidebarHeader"] button,[data-testid="stSidebarCollapseButton"] button,[data-testid="stSidebarCollapseButton"] span,[data-testid="stNumberInput"] button {{color:var(--muted)!important;}}
+[data-testid="stTooltipIcon"] svg,[data-testid="stSidebarHeader"] svg,[data-testid="stSidebarCollapseButton"] svg,[data-testid="stNumberInput"] button svg {{color:var(--muted)!important;fill:var(--muted)!important;}}
 [data-testid="stExpander"] summary {{background:var(--card)!important;color:var(--text)!important;border-radius:12px;}}
 [data-testid="stExpander"] summary p {{color:var(--text)!important;}}
-[data-testid="stButtonGroup"] button {{background:var(--card-alt)!important;border:1px solid var(--border)!important;}}
-[data-testid="stButtonGroup"] button p {{color:var(--text)!important;}}
-[data-testid="stButtonGroup"] button[aria-checked="true"] {{background:var(--accent)!important;border-color:var(--accent)!important;}}
-[data-testid="stButtonGroup"] button[aria-checked="true"] p {{color:#fff!important;}}
+[data-testid="stButtonGroup"] button[role="radio"] {{background:var(--card-alt)!important;border:1px solid var(--border)!important;}}
+[data-testid="stButtonGroup"] button[role="radio"] p {{color:var(--text)!important;}}
+[data-testid="stButtonGroup"] button[role="radio"][aria-checked="true"] {{background:var(--accent)!important;border-color:var(--accent)!important;}}
+[data-testid="stButtonGroup"] button[role="radio"][aria-checked="true"] p {{color:#fff!important;}}
 [data-testid="stMetricDelta"] svg {{display:none;}}
 [data-testid="stSidebar"] .stButton button {{box-shadow:none!important;}}
 [data-testid="stSidebar"] .stButton button:not([kind="primary"]) {{background:transparent;color:var(--text);}}
