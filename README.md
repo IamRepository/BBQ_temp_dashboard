@@ -1,6 +1,21 @@
-# Cook Profile Dashboard v1.4.0
+# Cook Profile Dashboard v1.5.0
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
+
+## v1.5.0 stability and import fixes
+- Fixed crash when clicking "Reset data window"
+- Fixed crash when clicking "Remove selected profile"
+- Newly imported profiles are now shown automatically (previously hidden after importing more files or re-importing after "Clear all")
+- Renaming a profile now updates everywhere immediately
+- Column names are trimmed, so "Probe 1" no longer imports as " Probe 1"
+- Timestamps with zone names (e.g. "CEST") now parse reliably instead of relying on a deprecated pandas behaviour
+- Loggers that drop a reading when a probe disconnects (rows with fewer values than the header) are detected; values are placed in the matching probe column, and an "Import notes" panel reports what happened
+- One unreadable file no longer cancels the whole import; it is skipped with a note
+- Import messages are kept visible after the page refreshes
+- Theme selector can no longer end up empty; multiselect tags follow the dark theme
+- ZIP export no longer overwrites profiles that share a name
+- Updated to Streamlit's current `width='stretch'` option (requires Streamlit 1.60 or newer)
+- Removed unused `profile_processing.py`
 
 ## v1.4.0 profile trimming
 - Added a dual-handle point-range slider for each selected profile

@@ -9,27 +9,62 @@ if 'profiles' not in st.session_state:
     st.session_state.profiles = []
 P = st.session_state.profiles
 
+
+def reset_trim(profile, widget_key):
+    # Runs as a button callback, i.e. before the slider is created in the next run.
+    last = max(len(profile.data) - 1, 0)
+    profile.trim_start, profile.trim_end = 0, last
+    st.session_state[widget_key] = (0, last)
+
+
+def remove_profile(profile_id):
+    remaining = [p for p in st.session_state.profiles if p.profile_id != profile_id]
+    st.session_state.profiles = remaining
+    st.session_state.visible_profile_ids = [i for i in st.session_state.get('visible_profile_ids', []) if i != profile_id]
+    st.session_state.selected_profile_id = remaining[0].profile_id if remaining else None
+
+
+def clear_profiles():
+    st.session_state.profiles = []
+    st.session_state.visible_profile_ids = []
+    st.session_state.selected_profile_id = None
+
+
+def rename_profile(profile_id, widget_key):
+    # Runs before the rerun, so the new name shows everywhere immediately.
+    new_name = st.session_state[widget_key].strip()
+    profile = next((p for p in st.session_state.profiles if p.profile_id == profile_id), None)
+    if profile is None or not new_name or new_name == profile.name:
+        st.session_state.rename_error = None
+    elif any(p.name == new_name and p.profile_id != profile_id for p in st.session_state.profiles):
+        st.session_state.rename_error = 'Profile names must be unique.'
+    else:
+        profile.name = new_name
+        st.session_state.rename_error = None
+
 with st.sidebar:
     st.markdown('<div class="side-brand">Cook Profile</div><div class="side-sub">Temperature dashboard</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-label">DATA</div>', unsafe_allow_html=True)
     files = st.file_uploader('Upload CSV or Excel files', type=['csv', 'xlsx', 'xls'], accept_multiple_files=True, key='uploaded_profile_files')
     keep = st.checkbox('Keep existing profiles', True, key='keep_existing_profiles')
-    if st.button('Import uploaded files', type='primary', use_container_width=True, disabled=not files, key='import_profiles_button'):
+    if st.button('Import uploaded files', type='primary', width='stretch', disabled=not files, key='import_profiles_button'):
         try:
             new, messages = load_uploaded_files(files)
             st.session_state.profiles = (P + new) if keep else new
-            for message in messages:
-                st.info(message)
-            st.success(f'Imported {len(new)} profiles')
+            previously_shown = st.session_state.get('visible_profile_ids', []) if keep else []
+            st.session_state.visible_profile_ids = previously_shown + [p.profile_id for p in new]
+            st.session_state.import_messages = messages + [f'Imported {len(new)} profile(s).']
             st.rerun()
         except Exception as exc:
             st.error(f'Import failed: {exc}')
-    if st.button('Clear all profiles', use_container_width=True, key='clear_profiles_button'):
-        st.session_state.profiles = []
-        st.rerun()
+    st.button('Clear all profiles', width='stretch', key='clear_profiles_button', on_click=clear_profiles)
+    if st.session_state.get('import_messages'):
+        with st.expander('Import notes', expanded=True):
+            for message in st.session_state.import_messages:
+                st.caption(message)
 
     st.markdown('<div class="section-label">APPEARANCE</div>', unsafe_allow_html=True)
-    theme = st.segmented_control('Theme', ['Light', 'Dark'], default='Light', key='theme_selector')
+    theme = st.segmented_control('Theme', ['Light', 'Dark'], default='Light', key='theme_selector') or 'Light'
     alignment = st.selectbox('Timeline alignment', ['Original timeline', 'Align peak', 'Align end', 'Clock time'], key='alignment_selector')
     with st.expander('Chart options'):
         grid = st.checkbox('Grid lines', True, key='grid_lines_toggle')
@@ -48,6 +83,9 @@ colors = {
     'accent': '#2563EB',
     'accent_hover': '#1D4ED8',
     'danger': '#DC2626',
+    'tag_bg': '#1F2937' if is_dark else '#E8EEF7',
+    'tag_border': '#374151' if is_dark else '#D7E0EC',
+    'tag_text': '#E5E7EB' if is_dark else '#334155',
     'shadow': '0 8px 24px rgba(0,0,0,.16)' if is_dark else '0 4px 16px rgba(15,23,42,.055)',
 }
 
@@ -79,9 +117,9 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 [data-baseweb="select"]>div,[data-baseweb="input"]>div,.stTextInput input {{background:var(--card-alt)!important;border-color:var(--border)!important;color:var(--text)!important;border-radius:10px!important;}}
 [data-testid="stFileUploaderDropzone"] {{background:var(--card-alt);border:1px dashed var(--border);border-radius:12px;}}
 [data-testid="stExpander"] {{border:1px solid var(--border);border-radius:12px;background:var(--card);}}
-[data-baseweb="tag"] {{background:#E8EEF7!important;color:#334155!important;border:1px solid #D7E0EC!important;border-radius:8px!important;box-shadow:none!important;}}
-[data-baseweb="tag"] span {{color:#334155!important;font-weight:600!important;}}
-[data-baseweb="tag"] svg {{color:#64748B!important;fill:#64748B!important;}}
+[data-baseweb="tag"] {{background:{colors['tag_bg']}!important;color:{colors['tag_text']}!important;border:1px solid {colors['tag_border']}!important;border-radius:8px!important;box-shadow:none!important;}}
+[data-baseweb="tag"] span {{color:{colors['tag_text']}!important;font-weight:600!important;}}
+[data-baseweb="tag"] svg {{color:{colors['muted']}!important;fill:{colors['muted']}!important;}}
 [data-baseweb="select"] {{color:var(--text)!important;}}
 [data-testid="stMetricDelta"] svg {{display:none;}}
 [data-testid="stSidebar"] .stButton button {{box-shadow:none!important;}}
@@ -102,7 +140,10 @@ profile_by_id = {p.profile_id: p for p in P}
 profile_ids = list(profile_by_id)
 if st.session_state.get('selected_profile_id') not in profile_by_id:
     st.session_state.selected_profile_id = profile_ids[0]
-shown_ids = st.multiselect('Profiles shown', profile_ids, default=[p.profile_id for p in P if p.visible], format_func=lambda pid: profile_by_id[pid].name, key='visible_profile_ids')
+if 'visible_profile_ids' not in st.session_state:
+    st.session_state.visible_profile_ids = [p.profile_id for p in P if p.visible]
+st.session_state.visible_profile_ids = [i for i in st.session_state.visible_profile_ids if i in profile_by_id]
+shown_ids = st.multiselect('Profiles shown', profile_ids, format_func=lambda pid: profile_by_id[pid].name, key='visible_profile_ids')
 visible = [profile_by_id[pid] for pid in shown_ids if pid in profile_by_id]
 for profile in P:
     profile.visible = profile.profile_id in shown_ids
@@ -127,7 +168,10 @@ with side:
         selected = profile_by_id[selected_id]
         st.caption(f'{selected.source_file}  |  {len(selected.plotted_data):,} of {len(selected.data):,} samples shown')
         edit_key = f'edit_{selected.profile_id}'
-        new = st.text_input('Display name', selected.name, key=f'{edit_key}_name')
+        name_key = f'{edit_key}_name'
+        st.text_input('Display name', selected.name, key=name_key, on_change=rename_profile, args=(selected.profile_id, name_key))
+        if st.session_state.get('rename_error'):
+            st.warning(st.session_state.rename_error)
         channel = st.text_input('Channel label', selected.channel, key=f'{edit_key}_channel')
         offset = st.slider('Time offset (hours)', -24.0, 24.0, float(selected.offset_hours), .25, key=f'{edit_key}_offset')
         color = st.color_picker('Line color', selected.color, key=f'{edit_key}_color')
@@ -137,13 +181,15 @@ with side:
         total_points = len(selected.data)
         current_start, current_end = selected.trim_bounds()
         if total_points > 1:
+            trim_key = f'{edit_key}_trim'
+            if trim_key not in st.session_state:
+                st.session_state[trim_key] = (current_start, current_end)
             trim_start, trim_end = st.slider(
                 'Trim profile edges',
                 min_value=0,
                 max_value=total_points - 1,
-                value=(current_start, current_end),
                 step=1,
-                key=f'{edit_key}_trim',
+                key=trim_key,
                 help='Move the left handle right to remove leading points. Move the right handle left to remove trailing points.',
             )
             selected.trim_start, selected.trim_end = trim_start, trim_end
@@ -151,32 +197,19 @@ with side:
             removed_left = trim_start
             removed_right = total_points - trim_end - 1
             st.caption(f'Showing {shown_points:,} of {total_points:,} points  |  Hidden left: {removed_left:,}  |  Hidden right: {removed_right:,}')
-            if st.button('Reset data window', use_container_width=True, key=f'{edit_key}_reset_trim'):
-                selected.trim_start, selected.trim_end = 0, total_points - 1
-                st.session_state[f'{edit_key}_trim'] = (0, total_points - 1)
-                st.rerun()
+            st.button('Reset data window', width='stretch', key=f'{edit_key}_reset_trim', on_click=reset_trim, args=(selected, trim_key))
         else:
             st.caption('This profile does not contain enough points to trim.')
-        if new != selected.name and new:
-            if any(p.name == new and p.profile_id != selected.profile_id for p in P):
-                st.warning('Profile names must be unique.')
-            else:
-                selected.name = new
         st.divider()
-        if st.button('Remove selected profile', use_container_width=True, key=f'remove_{selected.profile_id}'):
-            remaining = [p for p in P if p.profile_id != selected.profile_id]
-            st.session_state.profiles = remaining
-            st.session_state.selected_profile_id = remaining[0].profile_id if remaining else None
-            st.session_state.visible_profile_ids = [p.profile_id for p in remaining if p.visible]
-            st.rerun()
-        st.download_button('Download visible data', profiles_to_zip(visible), 'cook_profiles_export.zip', 'application/zip', use_container_width=True, disabled=not visible, key='download_visible_profiles')
+        st.button('Remove selected profile', width='stretch', key=f'remove_{selected.profile_id}', on_click=remove_profile, args=(selected.profile_id,))
+        st.download_button('Download visible data', profiles_to_zip(visible), 'cook_profiles_export.zip', 'application/zip', width='stretch', disabled=not visible, key='download_visible_profiles')
 
 with main:
     with st.container(border=True):
         st.markdown('<div class="card-title">Temperature profile comparison</div>', unsafe_allow_html=True)
         if visible:
             st.markdown(f'<div class="card-note">{len(visible)} profiles  |  {channels} channels  |  {min(durations):.1f} - {max(durations):.1f} h duration range</div>', unsafe_allow_html=True)
-        st.plotly_chart(comparison(visible, settings), use_container_width=True, config={'displaylogo': False, 'toImageButtonOptions': {'format': 'png', 'filename': 'cook_profiles'}})
+        st.plotly_chart(comparison(visible, settings), width='stretch', config={'displaylogo': False, 'toImageButtonOptions': {'format': 'png', 'filename': 'cook_profiles'}})
 
 st.write('')
 st.markdown('<div class="card-title">Selected profile statistics</div><div class="card-note">Key characteristics of the active profile</div>', unsafe_allow_html=True)
@@ -186,6 +219,6 @@ b.metric('DURATION', f'{selected.duration_hours:.1f} h')
 c.metric('MAXIMUM TEMPERATURE', f'{selected.maximum_c:.1f} °C')
 d.metric('VISIBLE SAMPLES', f'{len(selected.plotted_data):,}', f'{len(selected.data):,} total', delta_color='off')
 with st.container(border=True):
-    st.plotly_chart(single(selected, settings), use_container_width=True, config={'displaylogo': False})
+    st.plotly_chart(single(selected, settings), width='stretch', config={'displaylogo': False})
     with st.expander('Preview imported data'):
-        st.dataframe(selected.export_frame().head(500), use_container_width=True)
+        st.dataframe(selected.export_frame().head(500), width='stretch')
