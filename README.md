@@ -1,6 +1,19 @@
-# Cook Profile Dashboard v1.5.0
+# Cook Profile Dashboard v1.6.0
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
+
+## v1.6.0 setpoint comparison
+- New "Setpoint vs measured" card: tick "This is a setpoint" for a profile (for example the cooker's own temperature setting), then compare it with any measured probe
+- Shows average difference, lowest to highest difference, time within an accepted band (default ±10 °C) and time analysed, plus a chart of probe minus setpoint with the band shaded
+- "Ignore first (minutes)" leaves out the warm-up phase; the trimmed data windows are respected
+- Profiles from different devices are matched by clock time and the time offsets, whatever timeline alignment is selected
+- Setpoint profiles are drawn as dashed lines and labelled "(setpoint)"
+- New Smoothing control (Off, 1, 5 or 10 min): rolling average on measured lines only. Setpoints and exported data are never smoothed. The single-profile chart keeps the raw readings faintly behind the smoothed line
+- Timeline alignment is now a row of buttons (Start, Peak, End, Clock) like the Theme control, with a one-line explanation of the selected mode
+- The time offset now also shifts profiles in Clock time mode
+- The running version number is shown under the page title (stored in `version.py`)
+- Fixed for current Streamlit versions: profile chips are neutral again, the top line of the page is no longer hidden under the header, and buttons, dropdowns, inputs and the Import notes panel are readable in dark mode
+- New file `analysis.py` holds the smoothing and comparison logic
 
 ## v1.5.0 stability and import fixes
 - Fixed crash when clicking "Reset data window"

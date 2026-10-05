@@ -15,6 +15,7 @@ class CookProfile:
     metadata: dict = field(default_factory=dict)
     trim_start: int = 0
     trim_end: int | None = None
+    is_setpoint: bool = False  # a target the cooker was set to hold, drawn dashed and never smoothed
 
     def trim_bounds(self):
         count = len(self.data)
