@@ -1,6 +1,16 @@
-# Cook Profile Dashboard v1.6.2
+# Cook Profile Dashboard v1.6.3
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
+
+## v1.6.3 dark mode fixes and Excel export
+- Fixed unreadable text in dark mode: "Reset data window", "Remove selected profile" and the download button had near-white text on white; help tooltips had the same problem
+- "Import uploaded files" now has white text on blue in light mode too (it was dark text on blue)
+- Dropdown lists, uploaded-file chips, the uploader's add icon, dropdown arrows and the small heading above the title follow the dark theme
+- Checked with an automated contrast audit of every visible text element in light and dark mode: none is below 3:1
+- "Download visible data" now saves one Excel sheet: Timestamp (dd/mm/yyyy hh:mm), then one "<profile name> (°C)" column per visible profile
+- New Export interval setting (As logged, 10 s, 30 s, 1 min, 5 min; default 1 min): readings are averaged within each interval and rounded to 0.1 °C
+- Trimming and time offsets are applied to the export; smoothing is not. The file is named after the cook date, for example "Cook profiles 2026-10-03.xlsx"
+- Removed unused `profile_processing.py`
 
 ## v1.6.2 cosmetic adjustments
 - The explanation of the Smoothing control moved into an info icon next to its heading, shown on hover, like Timeline alignment

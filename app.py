@@ -2,7 +2,7 @@ import streamlit as st
 from profile_loader import load_uploaded_files
 from chart_builder import comparison, single, deviation
 from analysis import compare
-from export_utils import profiles_to_zip
+from export_utils import EXPORT_INTERVALS, export_filename, profiles_to_excel
 from version import VERSION
 import re
 
@@ -138,6 +138,7 @@ colors = {
     'muted': '#9CA3AF' if is_dark else '#64748B',
     'border': '#263244' if is_dark else '#E2E8F0',
     'accent': '#2563EB',
+    'kicker': '#60A5FA' if is_dark else '#2563EB',
     'accent_hover': '#1D4ED8',
     'danger': '#DC2626',
     'tag_bg': '#1F2937' if is_dark else '#E8EEF7',
@@ -147,7 +148,7 @@ colors = {
 }
 
 st.markdown(f'''<style>
-:root {{--page:{colors['page']};--sidebar:{colors['sidebar']};--card:{colors['card']};--card-alt:{colors['card_alt']};--text:{colors['text']};--muted:{colors['muted']};--border:{colors['border']};--accent:{colors['accent']};}}
+:root {{--page:{colors['page']};--sidebar:{colors['sidebar']};--card:{colors['card']};--card-alt:{colors['card_alt']};--text:{colors['text']};--muted:{colors['muted']};--border:{colors['border']};--accent:{colors['accent']};--kicker:{colors['kicker']};}}
 .stApp {{background:var(--page); color:var(--text);}}
 [data-testid="stHeader"] {{background:color-mix(in srgb, var(--page) 88%, transparent);}}
 [data-testid="stSidebar"] {{background:var(--sidebar); border-right:1px solid var(--border);}}
@@ -158,7 +159,7 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 .side-brand {{font-size:1.15rem;font-weight:750;color:var(--text);letter-spacing:-.02em}}
 .side-sub {{font-size:.78rem;color:var(--muted);margin-bottom:.2rem}}
 .section-label {{font-size:.68rem;font-weight:750;letter-spacing:.12em;color:var(--muted);margin:1.5rem 0 .6rem}}
-.page-kicker {{font-size:.72rem;font-weight:750;letter-spacing:.12em;color:var(--accent);text-transform:uppercase}}
+.page-kicker {{font-size:.72rem;font-weight:750;letter-spacing:.12em;color:var(--kicker);text-transform:uppercase}}
 .page-title {{font-size:2rem;font-weight:760;letter-spacing:-.035em;color:var(--text);margin-top:.16rem}}
 .page-version {{font-size:.8rem;font-weight:600;color:var(--muted);margin-top:.2rem}}
 .page-note {{font-size:.95rem;color:var(--muted);margin:.3rem 0 1.6rem}}
@@ -169,10 +170,26 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 [data-testid="stMetricValue"] {{color:var(--text);font-size:1.72rem;font-weight:720;letter-spacing:-.03em}}
 [data-testid="stMetricDelta"] {{color:var(--muted);background:var(--card-alt);border-radius:999px;padding:.18rem .45rem;width:max-content;font-size:.72rem}}
 [data-testid="stVerticalBlockBorderWrapper"] {{background:var(--card);border:1px solid var(--border)!important;border-radius:18px;box-shadow:{colors['shadow']};}}
-.stButton>button {{border-radius:10px;border:1px solid var(--border);font-weight:650;min-height:2.65rem;}}
-.stButton>button[kind="primary"] {{background:var(--accent);border-color:var(--accent);color:white;}}
-.stButton>button[kind="primary"]:hover {{background:{colors['accent_hover']};border-color:{colors['accent_hover']};}}
-.stDownloadButton>button {{border-radius:10px;border:1px solid var(--border);font-weight:650;min-height:2.65rem;background:var(--card-alt);color:var(--text)}}
+/* Buttons: every action button gets explicit colours, so text never inherits a colour meant for another background */
+[data-testid="stBaseButton-secondary"],[data-testid="stBaseButton-primary"],.stDownloadButton>button {{border-radius:10px!important;font-weight:650;min-height:2.65rem;box-shadow:none!important;}}
+[data-testid="stBaseButton-secondary"],.stDownloadButton>button {{background:var(--card-alt)!important;border:1px solid var(--border)!important;color:var(--text)!important;}}
+[data-testid="stBaseButton-secondary"] *,.stDownloadButton>button * {{color:var(--text)!important;}}
+[data-testid="stBaseButton-secondary"]:hover,.stDownloadButton>button:hover {{border-color:var(--accent)!important;}}
+[data-testid="stBaseButton-primary"] {{background:var(--accent)!important;border:1px solid var(--accent)!important;color:#fff!important;}}
+[data-testid="stBaseButton-primary"] * {{color:#fff!important;}}
+[data-testid="stBaseButton-primary"]:hover {{background:{colors['accent_hover']}!important;border-color:{colors['accent_hover']}!important;}}
+[data-testid="stSidebar"] [data-testid="stBaseButton-secondary"] {{background:transparent!important;}}
+/* Help tooltips and open dropdown lists follow the theme */
+[data-testid="stTooltipContent"] {{background:var(--card)!important;color:var(--text)!important;border:1px solid var(--border);box-shadow:{colors['shadow']};}}
+[data-testid="stTooltipContent"] * {{color:var(--text)!important;}}
+[data-baseweb="popover"] [role="listbox"],[data-baseweb="popover"] ul,[data-baseweb="popover"] [data-baseweb="menu"] {{background:var(--card)!important;}}
+[data-baseweb="popover"] [role="option"],[data-baseweb="popover"] [role="option"] * {{color:var(--text)!important;}}
+[data-baseweb="popover"] [role="option"]:hover,[data-baseweb="popover"] [role="option"][aria-selected="true"] {{background:var(--card-alt)!important;}}
+/* Uploaded file chips and the uploader's add icon */
+[data-testid="stSelectbox"] svg,[data-testid="stMultiSelect"] svg {{color:var(--muted);fill:var(--muted);}}
+[data-testid="stFileChip"] {{background:var(--card)!important;border:1px solid var(--border)!important;}}
+[data-testid="stFileChip"] * {{color:var(--text)!important;}}
+[data-testid="stFileUploader"] [data-testid="stBaseButton-minimal"],[data-testid="stFileUploader"] [data-testid="stIconMaterial"] {{color:var(--text)!important;}}
 [data-baseweb="select"]>div,[data-baseweb="input"]>div,.stTextInput input {{background:var(--card-alt)!important;border-color:var(--border)!important;color:var(--text)!important;border-radius:10px!important;}}
 [data-testid="stFileUploaderDropzone"] {{background:var(--card-alt);border:1px dashed var(--border);border-radius:12px;}}
 [data-testid="stExpander"] {{border:1px solid var(--border);border-radius:12px;background:var(--card);}}
@@ -193,8 +210,6 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 [data-testid="stButtonGroup"] button[role="radio"][aria-checked="true"] p {{color:#fff!important;}}
 [data-testid="stCheckbox"] label:has(input[role="switch"]:checked) > div:not([data-testid="stWidgetLabel"]) {{background:var(--accent)!important;}}
 [data-testid="stMetricDelta"] svg {{display:none;}}
-[data-testid="stSidebar"] .stButton button {{box-shadow:none!important;}}
-[data-testid="stSidebar"] .stButton button:not([kind="primary"]) {{background:transparent;color:var(--text);}}
 [data-testid="stSidebar"] hr {{margin:1rem 0;}}
 [data-testid="stColorPicker"] button {{border-radius:999px!important;width:2.4rem!important;height:2.4rem!important;border:2px solid var(--card)!important;box-shadow:0 0 0 1px var(--border)!important;}}
 hr {{border-color:var(--border)!important;}}
@@ -275,7 +290,10 @@ with side:
             st.caption('This profile does not contain enough points to trim.')
         st.divider()
         st.button('Remove selected profile', width='stretch', key=f'remove_{selected.profile_id}', on_click=remove_profile, args=(selected.profile_id,))
-        st.download_button('Download visible data', profiles_to_zip(visible), 'cook_profiles_export.zip', 'application/zip', width='stretch', disabled=not visible, key='download_visible_profiles')
+        export_interval = st.selectbox('Export interval', list(EXPORT_INTERVALS), index=list(EXPORT_INTERVALS).index('1 min'), key='export_interval',
+                                       help='One Excel sheet: Timestamp, then one column per visible profile. Readings are averaged within each interval. Trimming and time offsets are applied; smoothing is not.')
+        st.download_button('Download Excel file', profiles_to_excel(visible, export_interval) if visible else b'', export_filename(visible),
+                           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', width='stretch', disabled=not visible, key='download_visible_profiles')
 
 with main:
     with st.container(border=True):
