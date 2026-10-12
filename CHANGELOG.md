@@ -2,6 +2,17 @@
 
 All releases of the Cook Profile Dashboard, newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.6.4] - 2026-10-12
+
+Colour-coded profile dropdowns with full names. Tag [`v1.6.4`](https://github.com/IamRepository/BBQ_temp_dashboard/tree/v1.6.4).
+
+### Changed
+- The Profile, Setpoint and Measured probe dropdowns show a colour swatch beside each entry, in that profile's line colour, so each stream can be matched to its line at a glance. The swatch follows the line colour when it is changed.
+- These dropdowns open wide enough to show each profile's full name instead of cutting it off. The list stays attached to its box and on screen, also in the narrow right-hand column.
+
+### Fixed
+- Open dropdown lists were white in dark mode, because this Streamlit version draws them in a different container from the one the v1.6.3 styling targeted. They now follow the dark theme.
+
 ## [1.6.3] - 2026-10-10
 
 Dark mode fixes and Excel export. Commit [`7c02c22`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/7c02c22).
@@ -175,6 +186,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.6.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/b9ade35...v1.6.4
 [1.6.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/7fd6ede...7c02c22
 [1.6.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/98c1887...7fd6ede
 [1.6.1]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/3e73d04...98c1887

@@ -112,6 +112,32 @@ def readable_ink(hex_color):
     return '#0F172A' if dark_contrast >= white_contrast else '#FFFFFF'
 
 
+def line_colour(profile):
+    # The colour the line is drawn in right now (the picker's value wins over the stored one).
+    value = st.session_state.get(f'edit_{profile.profile_id}_color', profile.color)
+    return value if isinstance(value, str) and re.fullmatch(r'#[0-9a-fA-F]{6}', value) else profile.color
+
+
+def profile_dropdown_style(label, profiles):
+    # Open list of a profile picker: a swatch in each profile's line colour, and wide enough for the full names.
+    # Streamlit labels the open list with the widget label and numbers its entries (data-key) in option order.
+    if not profiles:
+        return
+    lst = f'[role="listbox"][aria-label="{label}"]'
+    width = min(480, max(len(p.name) for p in profiles) * 8 + 72)
+    css = (
+        # wider than the box when needed; Streamlit's own positioning then keeps the list on screen
+        f'[data-testid="stSelectboxVirtualDropdown"]:has({lst}) {{width:max(var(--trigger-width), {width}px)!important;}}'
+        f'{lst} > div, {lst} > div > div {{width:100%!important;}}'
+        f'{lst} [role="option"] > div {{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}}'
+        f'{lst} [role="option"] > div::before {{content:"";display:inline-block;width:.8rem;height:.8rem;border-radius:3px;'
+        f'margin-right:.6rem;vertical-align:-.1rem;box-shadow:0 0 0 1px rgba(127,127,127,.35);}}'
+    )
+    for index, profile in enumerate(profiles):
+        css += f'{lst} [role="option"][data-key="{index}"] > div::before {{background:{line_colour(profile)};}}'
+    st.markdown(f'<style>{css}</style>', unsafe_allow_html=True)
+
+
 # Profile details: the profile picker, display name and channel label take the selected line's colour.
 tint_css = ''
 active_profile = next((p for p in P if p.profile_id == st.session_state.get('selected_profile_id')), P[0] if P else None)
@@ -182,9 +208,10 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 /* Help tooltips and open dropdown lists follow the theme */
 [data-testid="stTooltipContent"] {{background:var(--card)!important;color:var(--text)!important;border:1px solid var(--border);box-shadow:{colors['shadow']};}}
 [data-testid="stTooltipContent"] * {{color:var(--text)!important;}}
-[data-baseweb="popover"] [role="listbox"],[data-baseweb="popover"] ul,[data-baseweb="popover"] [data-baseweb="menu"] {{background:var(--card)!important;}}
-[data-baseweb="popover"] [role="option"],[data-baseweb="popover"] [role="option"] * {{color:var(--text)!important;}}
-[data-baseweb="popover"] [role="option"]:hover,[data-baseweb="popover"] [role="option"][aria-selected="true"] {{background:var(--card-alt)!important;}}
+[data-baseweb="popover"] [role="listbox"],[data-baseweb="popover"] ul,[data-baseweb="popover"] [data-baseweb="menu"],[data-testid="stSelectboxVirtualDropdown"] {{background:var(--card)!important;}}
+[data-testid="stSelectboxVirtualDropdown"] {{border:1px solid var(--border)!important;border-radius:10px!important;box-shadow:{colors['shadow']}!important;}}
+[data-baseweb="popover"] [role="option"],[data-baseweb="popover"] [role="option"] *,[data-testid="stSelectboxVirtualDropdown"] [role="option"],[data-testid="stSelectboxVirtualDropdown"] [role="option"] * {{color:var(--text)!important;}}
+[data-baseweb="popover"] [role="option"]:hover,[data-baseweb="popover"] [role="option"][aria-selected="true"],[data-testid="stSelectboxVirtualDropdown"] [role="option"][data-hovered="true"] > div,[data-testid="stSelectboxVirtualDropdown"] [role="option"][data-focused="true"] > div,[data-testid="stSelectboxVirtualDropdown"] [role="option"][aria-selected="true"] > div {{background:var(--card-alt)!important;}}
 /* Uploaded file chips and the uploader's add icon */
 [data-testid="stSelectbox"] svg,[data-testid="stMultiSelect"] svg {{color:var(--muted);fill:var(--muted);}}
 [data-testid="stFileChip"] {{background:var(--card)!important;border:1px solid var(--border)!important;}}
@@ -250,6 +277,7 @@ main, side = st.columns([4.0, 1.0], gap='large')
 with side:
     with st.container(border=True):
         st.markdown('<div class="card-title">Profile details</div><div class="card-note">Select and customize one profile</div>', unsafe_allow_html=True)
+        profile_dropdown_style('Profile', [profile_by_id[pid] for pid in profile_ids])
         selected_id = st.selectbox('Profile', profile_ids, format_func=lambda pid: profile_by_id[pid].name, key='selected_profile_id')
         selected = profile_by_id[selected_id]
         st.caption(f'{selected.source_file}  |  {len(selected.plotted_data):,} of {len(selected.data):,} samples shown')
@@ -317,6 +345,8 @@ with st.container(border=True):
         if st.session_state.get('compare_probe_id') not in probe_ids:
             st.session_state.compare_probe_id = probe_ids[0]
         k1, k2, k3, k4 = st.columns(4)
+        profile_dropdown_style('Setpoint', setpoints)
+        profile_dropdown_style('Measured probe', measured_profiles)
         setpoint_id = k1.selectbox('Setpoint', setpoint_ids, format_func=lambda pid: profile_by_id[pid].name, key='compare_setpoint_id')
         probe_id = k2.selectbox('Measured probe', probe_ids, format_func=lambda pid: profile_by_id[pid].name, key='compare_probe_id')
         band = k3.number_input('Accepted band (± °C)', min_value=1.0, max_value=100.0, value=10.0, step=1.0, key='compare_band')

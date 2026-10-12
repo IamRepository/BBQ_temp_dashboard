@@ -1,8 +1,8 @@
-# Cook Profile Dashboard v1.6.3
+# Cook Profile Dashboard v1.6.4
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
 
-**What's new in 1.6.3:** readable buttons and tooltips in dark mode, and the data download is now one Excel sheet (Timestamp, then one column per profile) with a choice of interval. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
+**What's new in 1.6.4:** the profile dropdowns show each profile's full name with a swatch in its line colour, and open lists follow the dark theme. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Features
 - Import one or more CSV, XLSX or XLS files; each temperature column becomes a profile. Timestamps with zone names (such as "CEST") and probe dropouts are handled, and an Import notes panel reports what was found.
