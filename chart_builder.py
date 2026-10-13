@@ -1,7 +1,30 @@
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 
 from analysis import smooth
+
+# Most points drawn per line. A long cook logged every second has tens of thousands of readings, more than a
+# chart can show; drawing all of them made every click slow. Statistics, the setpoint comparison and the Excel
+# export always use every reading.
+MAX_POINTS = 4000
+
+
+def thin(x, y, limit=MAX_POINTS):
+    """Positions of the points to draw: in each of limit/2 equal stretches, the lowest and the highest reading,
+    so short spikes (a lid opening) and dips still show. Lines with up to `limit` points are drawn in full."""
+    n = len(y)
+    if n <= limit:
+        return np.arange(n)
+    values = pd.Series(np.asarray(y, dtype=float))
+    bucket = np.arange(n) * (limit // 2) // n
+    groups = values.groupby(bucket)
+    keep = np.concatenate([groups.idxmin().dropna().to_numpy(), groups.idxmax().dropna().to_numpy(), [0, n - 1]])
+    return np.unique(keep.astype(int))
+
+
+def _pick(series, positions):
+    return pd.Series(series).reset_index(drop=True).iloc[positions]
 
 
 def _frame(profile):
@@ -78,12 +101,14 @@ def comparison(profiles, settings):
     for profile in profiles:
         frame = _frame(profile)
         y = _y(profile, frame, settings)
+        x = _x(profile, settings['alignment'], y)
+        keep = thin(x, y)
         label = f'{profile.name} (setpoint)' if profile.is_setpoint else profile.name
         fig.add_trace(go.Scatter(
-            x=_x(profile, settings['alignment'], y), y=y, mode='lines', name=label,
+            x=_pick(x, keep), y=_pick(y, keep), mode='lines', name=label,
             line=_line(profile, settings),
-            customdata=[[profile.name, profile.channel]] * len(frame),
-            hovertemplate='<b>%{customdata[0]}</b><br>Channel: %{customdata[1]}<br>Temperature: %{y:.1f} °C<br>Time: %{x}<extra></extra>',
+            meta=[profile.name, profile.channel],
+            hovertemplate='<b>%{meta[0]}</b><br>Channel: %{meta[1]}<br>Temperature: %{y:.1f} °C<br>Time: %{x}<extra></extra>',
         ))
     return _layout(fig, settings, 'Temperature profiles')
 
@@ -97,13 +122,15 @@ def single(profile, settings):
     fig = go.Figure()
     if settings.get('smoothing_minutes', 0) and not profile.is_setpoint:
         # Keep the raw readings visible, faintly, behind the smoothed line.
+        raw = thin(x, frame.temperature_c)
         fig.add_trace(go.Scatter(
-            x=x, y=frame.temperature_c, mode='lines', name='Raw readings', opacity=0.28,
+            x=_pick(x, raw), y=_pick(frame.temperature_c, raw), mode='lines', name='Raw readings', opacity=0.28,
             line={'color': profile.color, 'width': 1},
             hovertemplate='Raw: %{y:.1f} °C<extra></extra>',
         ))
+    keep = thin(x, y)
     fig.add_trace(go.Scatter(
-        x=x, y=y, mode='lines', name=profile.name,
+        x=_pick(x, keep), y=_pick(y, keep), mode='lines', name=profile.name,
         line=_line(profile, settings),
         hovertemplate='Temperature: %{y:.1f} °C<br>Time: %{x}<extra></extra>',
     ))
@@ -116,8 +143,9 @@ def deviation(result, settings):
     fig = go.Figure()
     fig.add_hrect(y0=-band, y1=band, fillcolor='rgba(34,197,94,0.14)', line_width=0, layer='below')
     fig.add_hline(y=0, line={'color': _palette(settings['theme'])['muted'], 'width': 1, 'dash': 'dot'})
+    keep = thin(frame.x, frame.difference_c)
     fig.add_trace(go.Scatter(
-        x=frame.x, y=frame.difference_c, mode='lines', name='Probe minus setpoint',
+        x=_pick(frame.x, keep), y=_pick(frame.difference_c, keep), mode='lines', name='Probe minus setpoint',
         line={'color': '#2563EB', 'width': settings['width']},
         hovertemplate='Difference: %{y:+.1f} °C<extra></extra>',
     ))

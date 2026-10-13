@@ -144,3 +144,44 @@ class V166Interactions(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class V167Interactions(unittest.TestCase):
+    def setUp(self):
+        self.profiles, _ = load_uploaded_files([Upload(DATA / 'ok_device_cest.csv'), Upload(DATA / 'h5_fixed_setpoint.csv')])
+        self.at = page(self.profiles)
+
+    def test_trim_all_profiles_together(self):
+        at = self.at
+        self.assertEqual(at.checkbox(key='trim_all').label, 'Trim all profiles together')
+        at.checkbox(key='trim_all').check().run()
+        slider = at.slider(key='trim_all_clock')
+        self.assertEqual(slider.label, 'Trim all profiles')
+        low = slider.value[0]
+        self.assertEqual(low.strftime('%H:%M'), '10:00')
+        slider.set_value((low, low.replace(minute=5))).run()          # 10:00 to 10:05
+        self.assertEqual(problems(at), [])
+        shown = {p.channel: len(p.plotted_data) for p in at.session_state['profiles']}
+        self.assertEqual(shown['Setpoint'], 6)
+        self.assertEqual(shown['Probe 1'], 6)
+        self.assertTrue(any('left as they were' in c.value for c in at.caption))   # the 15:34 file has nothing inside
+        self.assertTrue(any(c.value.startswith('Window: 10:00 to 10:05 on 03/10/2026') for c in at.caption), [c.value for c in at.caption])
+        at.button(key='reset_all_trims').click().run()
+        self.assertTrue(all(len(p.plotted_data) == len(p.data) for p in at.session_state['profiles']))
+
+    def test_single_profile_slider_follows_a_group_trim(self):
+        at = self.at
+        at.checkbox(key='trim_all').check().run()
+        low = at.slider(key='trim_all_clock').value[0]
+        at.slider(key='trim_all_clock').set_value((low, low.replace(minute=5))).run()
+        at.checkbox(key='trim_all').uncheck().run()
+        selected = at.session_state['selected_profile_id']
+        profile = next(p for p in at.session_state['profiles'] if p.profile_id == selected)
+        self.assertEqual(at.slider(key=f'edit_{selected}_trim').value, profile.trim_bounds())
+
+    def test_full_profile_name_under_the_box(self):   # L6
+        name = self.profiles[0].name
+        self.assertTrue(any('profile-fullname' in m.value and name in m.value for m in self.at.markdown))
+
+    def test_download_button_present(self):   # M6: the file is built on click
+        self.assertEqual(self.at.get('download_button')[0].proto.label, 'Download Excel file')

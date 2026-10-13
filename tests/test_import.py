@@ -1,7 +1,7 @@
 """Import regression tests. Run from the repository root: python -m unittest discover -s tests -v
 
-Each test class matches an issue from the audit of v1.6.4 (H1-H5, M1, M8) or guards a
-format that already worked. The example files are made by tests/make_fixtures.py.
+Each test class matches an issue from the audit of v1.6.4 (H1-H5, M1-M8, L2-L9), a
+feature (trimming all profiles at once), or guards a format that already worked. The example files are made by tests/make_fixtures.py.
 """
 import io
 import sys
@@ -16,7 +16,9 @@ sys.path.insert(0, str(ROOT))
 
 from profile_loader import COLORS, load_uploaded_files  # noqa: E402
 from export_utils import export_sheets, export_table, profiles_to_excel  # noqa: E402
-from chart_builder import comparison  # noqa: E402
+from chart_builder import MAX_POINTS, comparison, deviation, single, thin  # noqa: E402
+from models import CookProfile  # noqa: E402
+import numpy as np  # noqa: E402
 from analysis import compare  # noqa: E402
 
 
@@ -227,6 +229,89 @@ class L9ClockAlignment(unittest.TestCase):
         self.assertEqual(names, [p.name for p in clock])
         settings['alignment'] = 'Original timeline'
         self.assertEqual(len(comparison(clock + elapsed, settings).data), len(clock + elapsed))
+
+
+def long_cook(hours=18, name='Pit'):
+    """A made-up cook logged every second, with one 20-second spike (a lid opening) at the 9-hour mark."""
+    n = hours * 3600
+    temperature = 110 + 3 * np.sin(np.arange(n) / 900)
+    temperature[9 * 3600:9 * 3600 + 20] = 160
+    data = pd.DataFrame({'timestamp': pd.date_range('2026-10-03 06:00', periods=n, freq='s'),
+                         'elapsed_hours': np.arange(n) / 3600, 'temperature_c': temperature})
+    return CookProfile('p-' + name, name, 'long.csv', name, COLORS[0], data)
+
+
+class M6LongCooks(unittest.TestCase):
+    settings = {'alignment': 'Clock time', 'theme': 'Light', 'grid': True, 'legend': True, 'width': 2, 'smoothing_minutes': 0}
+
+    def test_thinning_keeps_the_shape_spike_and_ends(self):
+        profile = long_cook()
+        y = profile.data.temperature_c
+        keep = thin(profile.data.timestamp, y)
+        self.assertLessEqual(len(keep), MAX_POINTS + 2)
+        self.assertEqual((keep[0], keep[-1]), (0, len(y) - 1))
+        self.assertEqual(y.iloc[keep].max(), 160)            # the short spike is still drawn
+        self.assertAlmostEqual(y.iloc[keep].min(), y.min())
+        self.assertTrue(np.all(np.diff(keep) > 0))            # still in time order
+
+    def test_short_lines_are_drawn_in_full(self):
+        self.assertEqual(len(thin(range(500), np.arange(500.0))), 500)
+
+    def test_charts_stay_small_and_statistics_use_every_reading(self):
+        pit, meat = long_cook(name='Pit'), long_cook(name='Meat')
+        fig = comparison([pit, meat], self.settings)
+        self.assertTrue(all(len(trace.x) <= MAX_POINTS + 2 for trace in fig.data))
+        self.assertLess(len(fig.to_json()), 1_000_000)
+        self.assertLessEqual(len(single(pit, dict(self.settings, smoothing_minutes=5)).data[0].x), MAX_POINTS + 2)
+        self.assertEqual(pit.maximum_c, 160)
+        self.assertEqual(len(export_table([pit], 'As logged')), 18 * 3600)
+
+    def test_setpoint_difference_chart_is_thinned(self):
+        setpoint, probe = long_cook(name='Set'), long_cook(name='Probe')
+        setpoint.data['temperature_c'] = 110.0
+        setpoint.is_setpoint = True
+        result, problem = compare(setpoint, probe, 10)
+        self.assertIsNone(problem)
+        self.assertLessEqual(len(deviation(result, self.settings).data[0].x), MAX_POINTS + 2)
+
+
+class TrimAllProfiles(unittest.TestCase):
+    def test_clock_window_trims_every_profile_that_has_readings_inside(self):
+        clock, _ = load('ok_device_cest.csv')        # 15:34:00 to 15:34:12
+        setpoint, _ = load('h5_fixed_setpoint.csv')   # 10:00 to 10:09
+        start, end = pd.Timestamp('2026-10-03 15:34:03'), pd.Timestamp('2026-10-03 15:34:08')
+        for p in clock:
+            self.assertTrue(p.trim_to(start, end, True))
+            self.assertTrue(p.plotted_data.timestamp.between(start, end).all())
+        self.assertEqual(clock[0].plotted_data.timestamp.iloc[0], start)
+        self.assertFalse(setpoint[0].trim_to(start, end, True))     # nothing inside: left as it was
+        self.assertEqual(len(setpoint[0].plotted_data), 10)
+
+    def test_the_time_offset_is_respected(self):
+        profile = load('h5_fixed_setpoint.csv')[0][0]
+        profile.offset_hours = 1                       # drawn at 11:00 to 11:09
+        profile.trim_to(pd.Timestamp('2026-10-03 11:05'), pd.Timestamp('2026-10-03 12:00'), True)
+        self.assertEqual(profile.export_frame().timestamp.iloc[0], pd.Timestamp('2026-10-03 11:05'))
+        self.assertEqual(len(profile.plotted_data), 5)
+
+    def test_hours_window_for_profiles_without_clock_times(self):
+        profiles, _ = load('h2_elapsed_hours.csv')    # 0 to 3 h every 0.25 h
+        for p in profiles:
+            self.assertTrue(p.trim_to(0.5, 2.0, False))
+            self.assertEqual(p.plotted_data.elapsed_hours.tolist(), [0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0])
+        self.assertEqual(profiles[0].window(False), (0.5, 2.0))
+
+
+class M7PinnedVersions(unittest.TestCase):
+    def test_streamlit_and_plotly_are_pinned(self):
+        lines = (ROOT / 'requirements.txt').read_text().splitlines()
+        for package in ('streamlit', 'plotly', 'pandas', 'openpyxl', 'xlrd'):
+            self.assertTrue(any(line.startswith(package + '==') for line in lines), package)
+
+
+class L7NoUnusedFiles(unittest.TestCase):
+    def test_example_data_removed(self):
+        self.assertFalse((ROOT / 'example_data.py').exists())
 
 
 if __name__ == '__main__':

@@ -119,7 +119,7 @@ def _one_continuous_clock(times,hours,zone_labels):
     if hours.notna().any():
         hours=hours.ffill().bfill()
         first=float(hours[times.notna()].iloc[0]) if times.notna().any() else float(hours.iloc[0])
-        times=times-pd.to_timedelta(hours,unit='h')+pd.Timedelta(hours=first)
+        times=times-pd.to_timedelta(hours,unit='h')+pd.Timedelta(first,unit='h')
         if hours.nunique()>1:
             names=[z for z in dict.fromkeys(zone_labels.dropna()) if z]
             change=' to '.join(names[:2]) if len(names)>=2 else 'a different UTC offset'
@@ -134,7 +134,7 @@ def _one_continuous_clock(times,hours,zone_labels):
         back=steps[(steps<0)&(steps>=-62)&(steps<=-(60-3*(typical or 0)-2))] if typical is not None else steps.iloc[0:0]
         if len(back)==1 and typical<=30 and (steps<0).sum()==1:
             after=times.index>=back.index[0]
-            times=times.copy(); times[after]=times[after]+pd.Timedelta(hours=1)
+            times=times.copy(); times[after]=times[after]+pd.Timedelta(1,unit='h')
             note=('the time went back by about an hour during this cook, as when the clocks change in autumn; '
                   'later readings are shown one hour on, so the cook stays on one continuous clock.')
     return times,note

@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+import numpy as np
 import pandas as pd
 
 
@@ -55,3 +56,26 @@ class CookProfile:
         if 'timestamp' in out:
             out['timestamp'] = out['timestamp'] + pd.to_timedelta(self.offset_hours, unit='h')
         return out
+
+    def time_axis(self, clock):
+        """Each reading's time as drawn: clock time with the offset, or hours on the Start timeline (with the offset)."""
+        if clock and 'timestamp' in self.data:
+            return self.data.timestamp + pd.to_timedelta(self.offset_hours, unit='h')
+        return self.data.elapsed_hours + self.offset_hours
+
+    def window(self, clock):
+        """(first, last) time of the visible data window, on the same axis as time_axis."""
+        times = self.time_axis(clock).reset_index(drop=True)
+        start, end = self.trim_bounds()
+        return times.iloc[start], times.iloc[end]
+
+    def trim_to(self, start, end, clock):
+        """Show only the readings between start and end. Returns False, and changes nothing, when no reading is inside."""
+        times = self.time_axis(clock).to_numpy()
+        if clock:
+            start, end = pd.Timestamp(start).to_datetime64(), pd.Timestamp(end).to_datetime64()
+        inside = np.flatnonzero((times >= start) & (times <= end))
+        if not len(inside):
+            return False
+        self.trim_start, self.trim_end = int(inside[0]), int(inside[-1])
+        return True

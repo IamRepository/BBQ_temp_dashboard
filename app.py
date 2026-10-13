@@ -1,3 +1,7 @@
+import datetime as dt
+import html
+
+import pandas as pd
 import streamlit as st
 from profile_loader import load_uploaded_files
 from chart_builder import comparison, single, deviation, without_clock
@@ -18,6 +22,49 @@ def reset_trim(profile, widget_key):
     last = max(len(profile.data) - 1, 0)
     profile.trim_start, profile.trim_end = 0, last
     st.session_state[widget_key] = (0, last)
+
+
+def group_trim_range(profiles):
+    """Slider range for trimming every profile at once: clock time when all profiles have it, else hours.
+    Returns (clock, low, high, step)."""
+    clock = all('timestamp' in p.data for p in profiles)
+    axes = [p.time_axis(clock) for p in profiles if len(p.data)]
+    low, high = min(a.min() for a in axes), max(a.max() for a in axes)
+    if clock:
+        low, high = pd.Timestamp(low).floor('min').to_pydatetime(), pd.Timestamp(high).ceil('min').to_pydatetime()
+        return True, low, high, dt.timedelta(minutes=1)
+    low, high = float(low) - float(low) % (1 / 60), float(high) + (-float(high)) % (1 / 60)
+    return False, round(low, 6), round(high, 6), 1 / 60
+
+
+def group_window(profiles, clock, low, high):
+    """The window that covers every profile's current data window, kept inside the slider range."""
+    windows = [p.window(clock) for p in profiles if len(p.data)]
+    start, end = min(w[0] for w in windows), max(w[1] for w in windows)
+    if clock:
+        start, end = pd.Timestamp(start).floor('min').to_pydatetime(), pd.Timestamp(end).ceil('min').to_pydatetime()
+    else:
+        start, end = float(start), float(end)
+    return max(low, min(start, high)), max(low, min(end, high))
+
+
+def apply_group_trim(widget_key, clock):
+    # Runs when the shared slider moves: every profile shows only the readings inside the chosen window.
+    start, end = st.session_state[widget_key]
+    untouched = []
+    for profile in st.session_state.profiles:
+        if not profile.trim_to(start, end, clock):
+            untouched.append(profile.name)
+        st.session_state.pop(f'edit_{profile.profile_id}_trim', None)   # the single-profile slider re-reads it
+    st.session_state.group_trim_note = untouched
+
+
+def reset_all_trims(widget_key, low, high):
+    for profile in st.session_state.profiles:
+        profile.trim_start, profile.trim_end = 0, max(len(profile.data) - 1, 0)
+        st.session_state.pop(f'edit_{profile.profile_id}_trim', None)
+    st.session_state[widget_key] = (low, high)
+    st.session_state.group_trim_note = []
 
 
 def remove_profile(profile_id):
@@ -201,6 +248,7 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 .page-note {{font-size:.95rem;color:var(--muted);margin:.3rem 0 1.6rem}}
 .card-title {{font-size:1.15rem;font-weight:700;color:var(--text)}}
 .card-note {{font-size:.82rem;color:var(--muted);margin-top:.15rem}}
+.profile-fullname {{font-size:.88rem;font-weight:650;color:var(--text);border-left:4px solid;padding:.05rem 0 .05rem .5rem;margin:-.35rem 0 .25rem;overflow-wrap:anywhere;line-height:1.35}}
 [data-testid="stMetric"] {{background:var(--card);border:1px solid var(--border);padding:1.05rem 1.2rem;border-radius:16px;box-shadow:{colors['shadow']};min-height:124px;}}
 [data-testid="stMetricLabel"] {{color:var(--muted);font-size:.78rem;font-weight:650;letter-spacing:.02em}}
 [data-testid="stMetricValue"] {{color:var(--text);font-size:1.72rem;font-weight:720;letter-spacing:-.03em}}
@@ -290,6 +338,8 @@ with side:
         profile_dropdown_style('Profile', [profile_by_id[pid] for pid in profile_ids])
         selected_id = st.selectbox('Profile', profile_ids, format_func=lambda pid: profile_by_id[pid].name, key='selected_profile_id', on_change=clear_rename_error)
         selected = profile_by_id[selected_id]
+        # The closed box cuts long names in this narrow column, so the full name is repeated here.
+        st.markdown(f'<div class="profile-fullname" style="border-left-color:{line_colour(selected)}">{html.escape(selected.name)}</div>', unsafe_allow_html=True)
         st.caption(f'{selected.source_file}  |  {len(selected.plotted_data):,} of {len(selected.data):,} samples shown')
         edit_key = f'edit_{selected.profile_id}'
         name_key = f'{edit_key}_name'
@@ -310,7 +360,31 @@ with side:
         st.markdown('<div class="section-label">VISIBLE DATA WINDOW</div>', unsafe_allow_html=True)
         total_points = len(selected.data)
         current_start, current_end = selected.trim_bounds()
-        if total_points > 1:
+        trim_all = st.checkbox('Trim all profiles together', key='trim_all',
+                               help='One slider sets the same time window for every loaded profile, instead of trimming them one by one. '
+                                    'Uses clock time when every profile has it, otherwise hours from each profile\'s start (with its time offset). '
+                                    'Untick to fine-tune a single profile again.')
+        if trim_all and any(len(p.data) > 1 for p in P):
+            clock, low, high, step = group_trim_range(P)
+            group_key = 'trim_all_clock' if clock else 'trim_all_hours'
+            stored = st.session_state.get(group_key)
+            if stored is None or not all(low <= v <= high for v in stored):
+                st.session_state[group_key] = group_window(P, clock, low, high)
+            one_day = clock and low.date() == high.date()
+            window_start, window_end = st.slider(
+                'Trim all profiles', min_value=low, max_value=high, step=step, key=group_key,
+                format=('HH:mm' if one_day else 'DD/MM HH:mm') if clock else '%.2f h', on_change=apply_group_trim, args=(group_key, clock),
+                help='Move the handles to hide the start and end of every profile at once.')
+            if clock:
+                shown = f"{window_start:%H:%M} to {window_end:%H:%M} on {window_start:%d/%m/%Y}" if window_start.date() == window_end.date() \
+                    else f"{window_start:%d/%m %H:%M} to {window_end:%d/%m %H:%M}"
+            else:
+                shown = f'{window_start:.2f} h to {window_end:.2f} h'
+            st.caption(f'Window: {shown}  |  Applies to all {len(P)} profiles  |  {selected.name}: {len(selected.plotted_data):,} of {total_points:,} points shown')
+            if st.session_state.get('group_trim_note'):
+                st.caption('No readings inside this window, left as they were: ' + ', '.join(st.session_state.group_trim_note))
+            st.button('Reset all data windows', width='stretch', key='reset_all_trims', on_click=reset_all_trims, args=(group_key, low, high))
+        elif total_points > 1:
             trim_key = f'{edit_key}_trim'
             if trim_key not in st.session_state:
                 st.session_state[trim_key] = (current_start, current_end)
@@ -333,8 +407,9 @@ with side:
         st.divider()
         st.button('Remove selected profile', width='stretch', key=f'remove_{selected.profile_id}', on_click=remove_profile, args=(selected.profile_id,))
         export_interval = st.selectbox('Export interval', list(EXPORT_INTERVALS), index=list(EXPORT_INTERVALS).index('1 min'), key='export_interval',
-                                       help='One Excel sheet: Timestamp, then one column per visible profile. Readings are averaged within each interval. Trimming and time offsets are applied; smoothing is not.')
-        st.download_button('Download Excel file', profiles_to_excel(visible, export_interval) if visible else b'', export_filename(visible),
+                                       help='Sheet "Cook profiles": Timestamp, then one column per visible profile. Profiles without clock times go on a second sheet, "Elapsed time". Readings are averaged within each interval. Trimming and time offsets are applied; smoothing is not.')
+        # The file is built only when the button is clicked, not on every click elsewhere on the page.
+        st.download_button('Download Excel file', (lambda: profiles_to_excel(visible, export_interval)) if visible else b'', export_filename(visible),
                            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', width='stretch', disabled=not visible, key='download_visible_profiles')
 
 with main:

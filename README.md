@@ -1,16 +1,17 @@
-# Cook Profile Dashboard v1.6.6
+# Cook Profile Dashboard v1.6.7
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
 
-**What's new in 1.6.6:** everyday fixes: pressing Import twice no longer duplicates profiles, each new profile gets its own colour from a colour-blind-safe palette, chart titles are readable in dark mode, time offsets can be set to the minute, and elapsed-only files get their own export sheet. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
+**What's new in 1.6.7:** trim every profile at once with "Trim all profiles together", long cooks stay fast (an 18-hour cook logged every second: about 0.1 s of work per click instead of 3 to 4 s), the full profile name shows under the Profile box, and the tested package versions are pinned. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Features
 - Import one or more CSV, XLSX or XLS files; each temperature column becomes a profile. Day-first (03/10/2026) and year-first (2026-10-03) dates, Excel dates, elapsed-time columns, zone names and UTC offsets, the clock change, probe dropouts and Fahrenheit are handled, and an Import notes panel reports what was found and skipped.
-- Overlay profiles on one chart, aligned by start, peak, end or clock time, with optional smoothing (1, 5 or 10 min).
+- Overlay profiles on one chart, aligned by start, peak, end or clock time, with optional smoothing (1, 5 or 10 min). Long cooks are drawn with at most 4,000 points per line, keeping each stretch's lowest and highest reading so short spikes still show; statistics, the setpoint comparison and the export use every reading.
 - Per profile: display name, channel label, line colour, time offset in minutes, a trim slider for the visible data window, and a setpoint flag (dashed line).
+- Trim all profiles together: one slider sets the same time window (clock time, or hours from the start for files without clock times) for every loaded profile.
 - Setpoint vs measured: how closely a probe followed the cooker's set temperature, with time within a chosen band.
 - Light and dark themes; chart images as PNG or JPEG from each chart's camera icon.
-- Excel export of the visible data, with the trim and time offsets applied. Profiles with clock times share one sheet; elapsed-only profiles go on a second sheet.
+- Excel export of the visible data, with the trim and time offsets applied. The file is built when you click Download, so it never slows down the rest of the page. Profiles with clock times share one sheet; elapsed-only profiles go on a second sheet.
 - Files already imported are skipped, and line colours are taken from a palette checked for colour-blind readers, so each profile has its own colour.
 
 ## Run locally
@@ -23,7 +24,9 @@ streamlit run app.py
 ```
 
 ## Deployment
-The app runs on Streamlit Community Cloud from the `main` branch of this repository, with `app.py` as the entry point. Dependencies come from `requirements.txt` (Streamlit 1.60 or newer).
+The app runs on Streamlit Community Cloud from the `main` branch of this repository, with `app.py` as the entry point. Dependencies come from `requirements.txt`.
+
+`requirements.txt` pins the exact versions each release was tested with (Streamlit 1.65.0, Plotly 6.9.0, pandas 2.3.3, openpyxl 3.1.5, xlrd 2.0.2). The page styling depends on Streamlit's internal element names, which can change between Streamlit versions, so a newer version is adopted on purpose: test it, then raise the pin in a release of its own. numpy is left to follow pandas, because which numpy builds exist depends on the server's Python version. The code also works on Streamlit 1.60, and every release is tested on both.
 
 After a release that changes files other than `app.py`, reboot the app (Manage app, three dots, Reboot app) so no old module stays in memory.
 
@@ -36,7 +39,6 @@ After a release that changes files other than `app.py`, reboot the app (Manage a
 | `chart_builder.py` | The Plotly charts |
 | `analysis.py` | Smoothing and the setpoint comparison |
 | `export_utils.py` | The Excel export |
-| `example_data.py` | Built-in example profiles (not shown in the interface) |
 | `version.py` | The running version number |
 | `tests/` | Regression tests and the small example files they use |
 | `CHANGELOG.md` | Every release and what changed |
@@ -46,7 +48,7 @@ Run before every release, from the repository root:
 ```bash
 python -m unittest discover -s tests -v
 ```
-`tests/test_import.py` checks file import against the example files in `tests/data` (made by `tests/make_fixtures.py`, no real cook data). `tests/test_app.py` loads every example file into the page and exercises the main interactions.
+There are 50 tests. `tests/test_import.py` checks file import against the example files in `tests/data` (made by `tests/make_fixtures.py`, no real cook data), plus the export, chart thinning on a made-up 18-hour cook, trimming and the pinned versions. `tests/test_app.py` loads every example file into the page and exercises the main interactions, including Trim all profiles together. Each fixed issue has its own test, named after its audit number (H1, M6, L9 and so on).
 
 ## Input assumptions
 - Temperatures are Celsius unless the column header says °F, (F) or Fahrenheit; those are converted.

@@ -1,6 +1,8 @@
-streamlit>=1.60,<2.0
-pandas>=2.2,<3.0
-plotly>=5.24,<7.0
-openpyxl>=3.1,<4.0
-xlrd>=2.0,<3.0
-numpy>=1.26,<3.0
+# Exact versions, tested with this release (see README, Deployment). Raise them only after testing.
+streamlit==1.65.0
+plotly==6.9.0
+pandas==2.3.3
+openpyxl==3.1.5
+xlrd==2.0.2
+# numpy is left to follow pandas, because which numpy builds exist depends on the Python version of the server.
+numpy>=1.26,<2.6

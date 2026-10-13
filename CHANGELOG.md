@@ -2,6 +2,36 @@
 
 All releases of the Cook Profile Dashboard, newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.6.7] - 2026-10-13
+
+Speed and upkeep: fixes M6, M7, L6 and L7, the last open issues from the 12 October audit, and adds trimming of all profiles at once. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Added
+- **Trim all profiles together**, a tick box under Visible data window. When ticked, one slider sets the same time window for every loaded profile instead of trimming them one by one. It uses clock time, with each profile's time offset, when every profile has clock times. Otherwise it uses hours from each profile's start, as on the Start timeline. The slider starts at the window that covers all current trims, so ticking the box changes nothing until you move it.
+  - A line under the slider spells out the window (for example "16:04 to 16:36 on 03/10/2026") and how many points of the selected profile are shown.
+  - A profile with no readings inside the window is left as it was and named under the slider.
+  - "Reset all data windows" shows every profile in full again.
+  - Untick the box to fine-tune a single profile; its own slider picks up the shared trim.
+- 13 more regression tests (50 in all), for chart thinning on a made-up 18-hour cook, trimming all profiles in clock time and in hours, the time offset, the pinned versions, the full-name line and the download button.
+
+### Fixed
+- Long cooks made the page slow: an 18-hour cook logged every second (64,800 readings per probe) took 3 to 4 s per click, 9.6 s with "As logged" export selected, and sent 13 MB of chart data. Each click now takes about 0.1 s on the server (0.6 to 0.9 s in the browser, including drawing) and sends 0.35 MB, then about 0.02 MB per click. (M6) Three changes:
+  - Charts draw at most 4,000 points per line, keeping the lowest and highest reading in each stretch, so short spikes such as a lid opening still show. Lines with fewer points are drawn in full. Statistics, the setpoint comparison and the Excel file always use every reading.
+  - The profile name and channel in the chart's hover box are sent once per line instead of once per reading.
+  - The Excel file is built only when "Download Excel file" is clicked, not on every click elsewhere on the page. With "As logged" on a very long cook the download itself takes several seconds.
+- The closed Profile box cut long names off in the narrow Profile details column. The full name now shows under the box, with a bar in the line colour. (L6)
+- The Export interval help still said "One Excel sheet"; since 1.6.6, profiles without clock times go on a second sheet. The help now says so.
+- Two time calculations in the clock-change handling used a form that new numpy versions warn about and will later reject. Both now give the unit explicitly; no change in results.
+
+### Changed
+- `requirements.txt` pins the exact versions tested: Streamlit 1.65.0, Plotly 6.9.0, pandas 2.3.3, openpyxl 3.1.5 and xlrd 2.0.2. Before, any Streamlit 1.x from 1.60 was allowed, so a reboot could install a newer Streamlit that breaks the dark-mode styling. numpy stays a range, because which numpy builds exist depends on the server's Python version. New versions are adopted in a release of their own, after testing. (M7)
+
+### Removed
+- The unused file `example_data.py`; the app never loaded it. (L7)
+
+### Upgrade note
+- Reboot the app on Streamlit Community Cloud after deploying (Manage app, three dots, Reboot app): `chart_builder.py`, `models.py` and `profile_loader.py` changed, and the reboot also installs the pinned package versions.
+
 ## [1.6.6] - 2026-10-13
 
 Everyday use: fixes M2 to M5, L1 to L5, L8 and L9 from the 12 October audit. Commit [`5bd1ab2`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/5bd1ab2).
@@ -237,6 +267,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.6.7]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/5bd1ab2...COMMIT
 [1.6.6]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/c0b6a55...5bd1ab2
 [1.6.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/49fbe62...c0b6a55
 [1.6.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/b9ade35...1665b1a
