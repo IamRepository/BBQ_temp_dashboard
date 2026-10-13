@@ -66,7 +66,8 @@ def _palette(mode):
     return {'bg': '#FFFFFF', 'plot': '#FFFFFF', 'text': '#172033', 'muted': '#64748B', 'grid': 'rgba(100,116,139,0.11)', 'border': '#E2E8F0'}
 
 
-def _layout(fig, settings, title, height=650, x_title=None, y_title='Temperature (°C)'):
+def _layout(fig, settings, title, height=None, x_title=None, y_title='Temperature (°C)'):
+    # No height: the page sizes the comparison and single-profile charts at 16:9 to the card width.
     colors = _palette(settings['theme'])
     fig.update_layout(
         title={'text': title, 'x': 0.02, 'xanchor': 'left', 'font': {'size': 18}},

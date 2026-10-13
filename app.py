@@ -152,11 +152,14 @@ with st.sidebar:
 
 
 
-def chart_config(filename):
+def chart_config(filename, wide=False):
     # The camera icon in each chart's toolbar saves the picture in the format chosen in the sidebar.
+    # 16:9 charts are saved at 1600 x 900 (3200 x 1800 pixels at scale 2), whatever the window size.
     safe = re.sub(r'[^A-Za-z0-9._-]+', '_', filename).strip('_') or 'chart'
-    return {'displaylogo': False, 'displayModeBar': True,
-            'toImageButtonOptions': {'format': image_format.lower(), 'filename': safe, 'scale': 2}}
+    image = {'format': image_format.lower(), 'filename': safe, 'scale': 2}
+    if wide:
+        image.update(width=1600, height=900)
+    return {'displaylogo': False, 'displayModeBar': True, 'responsive': True, 'toImageButtonOptions': image}
 
 
 def readable_ink(hex_color):
@@ -248,7 +251,14 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 .page-note {{font-size:.95rem;color:var(--muted);margin:.3rem 0 1.6rem}}
 .card-title {{font-size:1.15rem;font-weight:700;color:var(--text)}}
 .card-note {{font-size:.82rem;color:var(--muted);margin-top:.15rem}}
-.profile-fullname {{font-size:.88rem;font-weight:650;color:var(--text);border-left:4px solid;padding:.05rem 0 .05rem .5rem;margin:-.35rem 0 .25rem;overflow-wrap:anywhere;line-height:1.35}}
+.profile-fullname {{display:none;font-size:.88rem;font-weight:650;color:var(--text);border-left:4px solid;padding:.05rem 0 .05rem .5rem;margin:-.35rem 0 .25rem;overflow-wrap:anywhere;line-height:1.35}}
+@media (min-width:640px) and (max-width:1399px) {{.profile-fullname {{display:block;}}}}
+/* The comparison and single-profile charts keep a 16:9 shape at any window width */
+.st-key-chart_comparison [data-testid="stElementContainer"],.st-key-chart_comparison [data-testid="stFullScreenFrame"],
+.st-key-chart_single [data-testid="stElementContainer"],.st-key-chart_single [data-testid="stFullScreenFrame"] {{height:auto!important;flex:0 0 auto!important;}}
+.st-key-chart_comparison [data-testid="stPlotlyChart"],.st-key-chart_single [data-testid="stPlotlyChart"] {{aspect-ratio:16/9;height:auto!important;}}
+.st-key-chart_comparison [data-testid="stPlotlyChart"] > div,.st-key-chart_comparison .js-plotly-plot,.st-key-chart_comparison .plot-container,.st-key-chart_comparison .svg-container,
+.st-key-chart_single [data-testid="stPlotlyChart"] > div,.st-key-chart_single .js-plotly-plot,.st-key-chart_single .plot-container,.st-key-chart_single .svg-container {{height:100%!important;}}
 [data-testid="stMetric"] {{background:var(--card);border:1px solid var(--border);padding:1.05rem 1.2rem;border-radius:16px;box-shadow:{colors['shadow']};min-height:124px;}}
 [data-testid="stMetricLabel"] {{color:var(--muted);font-size:.78rem;font-weight:650;letter-spacing:.02em}}
 [data-testid="stMetricValue"] {{color:var(--text);font-size:1.72rem;font-weight:720;letter-spacing:-.03em}}
@@ -331,32 +341,37 @@ c3.metric('DURATION RANGE', f'{min(durations):.1f} - {max(durations):.1f} h' if 
 c4.metric('TEMPERATURE RANGE', f'{min(mins):.1f} - {max(maxs):.1f} °C' if mins else 'No data', 'Visible profiles', delta_color='off')
 
 st.write('')
-main, side = st.columns([4.0, 1.0], gap='large')
-with side:
-    with st.container(border=True):
-        st.markdown('<div class="card-title">Profile details</div><div class="card-note">Select and customize one profile</div>', unsafe_allow_html=True)
-        profile_dropdown_style('Profile', [profile_by_id[pid] for pid in profile_ids])
+# Profile details sit between the overview cards and the chart, so every change is seen in the chart straight away.
+with st.container(border=True, key='profile_details_card'):
+    st.markdown('<div class="card-title">Profile details</div><div class="card-note">Select and customize one profile; changes show in the chart below straight away</div>', unsafe_allow_html=True)
+    profile_dropdown_style('Profile', [profile_by_id[pid] for pid in profile_ids])   # a style element: kept out of the columns so labels line up
+    d1, d2, d3, d4, d5 = st.columns([2.4, 1.6, 1.4, 1.4, 0.85], gap='medium')
+    with d1:
         selected_id = st.selectbox('Profile', profile_ids, format_func=lambda pid: profile_by_id[pid].name, key='selected_profile_id', on_change=clear_rename_error)
         selected = profile_by_id[selected_id]
-        # The closed box cuts long names in this narrow column, so the full name is repeated here.
+        # On narrower windows the closed box can cut a long name; the full name then shows under it (CSS below).
         st.markdown(f'<div class="profile-fullname" style="border-left-color:{line_colour(selected)}">{html.escape(selected.name)}</div>', unsafe_allow_html=True)
         st.caption(f'{selected.source_file}  |  {len(selected.plotted_data):,} of {len(selected.data):,} samples shown')
-        edit_key = f'edit_{selected.profile_id}'
-        name_key = f'{edit_key}_name'
+    edit_key = f'edit_{selected.profile_id}'
+    name_key = f'{edit_key}_name'
+    with d2:
         st.text_input('Display name', selected.name, key=name_key, on_change=rename_profile, args=(selected.profile_id, name_key))
         if st.session_state.get('rename_error'):
             st.warning(st.session_state.rename_error)
+    with d3:
         channel = st.text_input('Channel label', selected.channel, key=f'{edit_key}_channel')
-        offset_minutes = st.number_input('Time offset (minutes)', min_value=-1440.0, max_value=1440.0, value=float(selected.offset_hours) * 60,
+    with d4:
+        offset_minutes = st.number_input('Time offset (min)', min_value=-1440.0, max_value=1440.0, value=float(selected.offset_hours) * 60,
                                          step=1.0, format='%.2f', key=f'{edit_key}_offset_min',
                                          help='Shifts this profile in time, for example to correct a device clock. Whole minutes, with decimals for seconds (3.5 = 3 min 30 s). Up to 24 hours either way.')
         offset = offset_minutes / 60
         st.caption(f'Offset {offset_readout(offset)} (h:mm:ss)')
+    with d5:
         color = st.color_picker('Line color', selected.color, key=f'{edit_key}_color')
-        selected.is_setpoint = st.checkbox('This is a setpoint (dashed line)', selected.is_setpoint, key=f'{edit_key}_setpoint',
-                                           help='Use for a temperature the cooker was set to hold. It is drawn dashed, never smoothed, and can be compared with a probe below.')
-        selected.channel, selected.offset_hours, selected.color = channel, offset, color
+    selected.channel, selected.offset_hours, selected.color = channel, offset, color
 
+    w1, w2, w3 = st.columns([2.6, 1.6, 1.5], gap='large')
+    with w1:
         st.markdown('<div class="section-label">VISIBLE DATA WINDOW</div>', unsafe_allow_html=True)
         total_points = len(selected.data)
         current_start, current_end = selected.trim_bounds()
@@ -383,7 +398,7 @@ with side:
             st.caption(f'Window: {shown}  |  Applies to all {len(P)} profiles  |  {selected.name}: {len(selected.plotted_data):,} of {total_points:,} points shown')
             if st.session_state.get('group_trim_note'):
                 st.caption('No readings inside this window, left as they were: ' + ', '.join(st.session_state.group_trim_note))
-            st.button('Reset all data windows', width='stretch', key='reset_all_trims', on_click=reset_all_trims, args=(group_key, low, high))
+            st.button('Reset all data windows', key='reset_all_trims', on_click=reset_all_trims, args=(group_key, low, high))
         elif total_points > 1:
             trim_key = f'{edit_key}_trim'
             if trim_key not in st.session_state:
@@ -401,26 +416,32 @@ with side:
             removed_left = trim_start
             removed_right = total_points - trim_end - 1
             st.caption(f'Showing {shown_points:,} of {total_points:,} points  |  Hidden left: {removed_left:,}  |  Hidden right: {removed_right:,}')
-            st.button('Reset data window', width='stretch', key=f'{edit_key}_reset_trim', on_click=reset_trim, args=(selected, trim_key))
+            st.button('Reset data window', key=f'{edit_key}_reset_trim', on_click=reset_trim, args=(selected, trim_key))
         else:
             st.caption('This profile does not contain enough points to trim.')
-        st.divider()
-        st.button('Remove selected profile', width='stretch', key=f'remove_{selected.profile_id}', on_click=remove_profile, args=(selected.profile_id,))
+    with w2:
+        st.markdown('<div class="section-label">SELECTED PROFILE</div>', unsafe_allow_html=True)
+        selected.is_setpoint = st.checkbox('Setpoint (dashed line)', selected.is_setpoint, key=f'{edit_key}_setpoint',
+                                           help='Tick for a temperature the cooker was set to hold. It is drawn as a dashed line, never smoothed, and can be compared with a measured probe under Setpoint vs measured.')
+        st.button('Remove profile', width='stretch', key=f'remove_{selected.profile_id}', on_click=remove_profile, args=(selected.profile_id,))
+    with w3:
+        st.markdown('<div class="section-label">EXPORT VISIBLE PROFILES</div>', unsafe_allow_html=True)
         export_interval = st.selectbox('Export interval', list(EXPORT_INTERVALS), index=list(EXPORT_INTERVALS).index('1 min'), key='export_interval',
                                        help='Sheet "Cook profiles": Timestamp, then one column per visible profile. Profiles without clock times go on a second sheet, "Elapsed time". Readings are averaged within each interval. Trimming and time offsets are applied; smoothing is not.')
         # The file is built only when the button is clicked, not on every click elsewhere on the page.
         st.download_button('Download Excel file', (lambda: profiles_to_excel(visible, export_interval)) if visible else b'', export_filename(visible),
                            'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', width='stretch', disabled=not visible, key='download_visible_profiles')
 
-with main:
-    with st.container(border=True):
-        st.markdown('<div class="card-title">Temperature profile comparison</div>', unsafe_allow_html=True)
-        if visible:
-            st.markdown(f'<div class="card-note">{len(visible)} profiles  |  {devices} devices  |  {min(durations):.1f} - {max(durations):.1f} h duration range</div>', unsafe_allow_html=True)
-        if alignment == 'Clock time' and without_clock(visible):
-            st.caption('These profiles have no clock times, so they are not shown in Clock alignment: '
-                       + ', '.join(p.name for p in without_clock(visible)) + '. Choose Start, Peak or End to see them.')
-        st.plotly_chart(comparison(visible, settings), width='stretch', theme=None, config=chart_config('cook_profiles'))
+st.write('')
+with st.container(border=True):
+    st.markdown('<div class="card-title">Temperature profile comparison</div>', unsafe_allow_html=True)
+    if visible:
+        st.markdown(f'<div class="card-note">{len(visible)} profiles  |  {devices} devices  |  {min(durations):.1f} - {max(durations):.1f} h duration range</div>', unsafe_allow_html=True)
+    if alignment == 'Clock time' and without_clock(visible):
+        st.caption('These profiles have no clock times, so they are not shown in Clock alignment: '
+                   + ', '.join(p.name for p in without_clock(visible)) + '. Choose Start, Peak or End to see them.')
+    with st.container(key='chart_comparison'):
+        st.plotly_chart(comparison(visible, settings), width='stretch', theme=None, config=chart_config('cook_profiles', wide=True))
 
 st.write('')
 setpoints = [p for p in P if p.is_setpoint]
@@ -428,7 +449,7 @@ measured_profiles = [p for p in P if not p.is_setpoint]
 with st.container(border=True):
     st.markdown('<div class="card-title">Setpoint vs measured</div><div class="card-note">How closely a probe followed the temperature the cooker was set to hold</div>', unsafe_allow_html=True)
     if not setpoints or not measured_profiles:
-        st.info('Tick "This is a setpoint" for a profile in Profile details, for example the cooker\'s own temperature setting. It can then be compared with a measured probe here.')
+        st.info('Tick "Setpoint (dashed line)" for a profile in Profile details, for example the cooker\'s own temperature setting. It can then be compared with a measured probe here.')
     else:
         setpoint_ids = [p.profile_id for p in setpoints]
         probe_ids = [p.profile_id for p in measured_profiles]
@@ -466,6 +487,7 @@ b.metric('DURATION', f'{selected.duration_hours:.1f} h')
 c.metric('MAXIMUM TEMPERATURE', f'{selected.maximum_c:.1f} °C')
 d.metric('VISIBLE SAMPLES', f'{len(selected.plotted_data):,}', f'{len(selected.data):,} total', delta_color='off')
 with st.container(border=True):
-    st.plotly_chart(single(selected, settings), width='stretch', theme=None, config=chart_config(selected.name))
+    with st.container(key='chart_single'):
+        st.plotly_chart(single(selected, settings), width='stretch', theme=None, config=chart_config(selected.name, wide=True))
     with st.expander('Preview imported data'):
         st.dataframe(selected.export_frame().head(500), width='stretch')

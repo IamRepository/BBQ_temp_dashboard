@@ -185,3 +185,26 @@ class V167Interactions(unittest.TestCase):
 
     def test_download_button_present(self):   # M6: the file is built on click
         self.assertEqual(self.at.get('download_button')[0].proto.label, 'Download Excel file')
+
+
+class V168Layout(unittest.TestCase):
+    def setUp(self):
+        self.profiles, _ = load_uploaded_files([Upload(DATA / 'ok_device_cest.csv'), Upload(DATA / 'h5_fixed_setpoint.csv')])
+        self.at = page(self.profiles)
+
+    def test_charts_have_no_fixed_height_and_save_as_16_9(self):
+        import json
+        charts = self.at.get('plotly_chart')
+        comparison_chart, single_chart = charts[0], charts[-1]
+        for chart in (comparison_chart, single_chart):
+            figure = json.loads(chart.proto.spec)
+            self.assertNotIn('height', figure['layout'])          # the page sizes it at 16:9
+            image = json.loads(chart.proto.config)['toImageButtonOptions']
+            self.assertEqual((image['width'], image['height']), (1600, 900))
+
+    def test_profile_details_come_before_the_chart(self):
+        # Profile details is a full-width card between the overview cards and the comparison chart.
+        source = (Path(__file__).resolve().parent.parent / 'app.py').read_text()
+        self.assertLess(source.index("key='profile_details_card'"), source.index("key='chart_comparison'"))
+        self.assertNotIn('main, side = st.columns', source)
+        self.assertEqual(self.at.checkbox(key=f"edit_{self.at.session_state['selected_profile_id']}_setpoint").label, 'Setpoint (dashed line)')

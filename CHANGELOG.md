@@ -2,6 +2,30 @@
 
 All releases of the Cook Profile Dashboard, newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.6.8] - 2026-10-13
+
+Layout: Profile details above the chart, and 16:9 charts. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Changed
+- **Profile details moved above the chart.** It was a narrow column to the right of the comparison chart. It is now a full-width panel between the overview cards and the chart, so a change to a profile shows in the chart directly below it.
+  - Top row: Profile, Display name, Channel label, Time offset and Line color, side by side.
+  - Second row, three groups: Visible data window (Trim all profiles together, the trim slider and its reset button); Selected profile (Setpoint tick box and Remove profile); Export visible profiles (Export interval and Download Excel file).
+  - The comparison chart now uses the full page width.
+  - On a phone the groups stack, as before.
+- **16:9 charts.** The comparison chart and the selected profile's chart keep a 16:9 shape at any window width, instead of a fixed 650-pixel height. Images saved with the camera icon are 16:9 too, 3200 × 1800 pixels (1600 × 900 at scale 2), whatever the window size. The Setpoint vs measured chart keeps its short, wide shape.
+- Shorter labels so nothing is cut off in the new layout:
+  - "Time offset (minutes)" is now "Time offset (min)".
+  - "This is a setpoint (dashed line)" is now "Setpoint (dashed line)".
+  - "Remove selected profile" is now "Remove profile".
+  - The help texts are unchanged in meaning.
+- The full-name line under the Profile box (added in 1.6.7) is shown only on windows 640 to 1399 pixels wide. The box is now wide enough for full names on wider windows; on a phone it is full width.
+
+### Added
+- 3 more regression tests (53 in all): no fixed chart height, 16:9 saved images, and the panel order.
+
+### Upgrade note
+- Reboot the app on Streamlit Community Cloud after deploying (Manage app, three dots, Reboot app): `chart_builder.py` changed.
+
 ## [1.6.7] - 2026-10-13
 
 Speed and upkeep: fixes M6, M7, L6 and L7, the last open issues from the 12 October audit, and adds trimming of all profiles at once. Commit [`4798881`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/4798881).
@@ -267,6 +291,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.6.8]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/4798881...COMMIT
 [1.6.7]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/5bd1ab2...4798881
 [1.6.6]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/c0b6a55...5bd1ab2
 [1.6.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/49fbe62...c0b6a55

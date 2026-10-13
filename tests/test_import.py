@@ -266,6 +266,11 @@ class M6LongCooks(unittest.TestCase):
         self.assertEqual(pit.maximum_c, 160)
         self.assertEqual(len(export_table([pit], 'As logged')), 18 * 3600)
 
+    def test_comparison_and_single_charts_leave_the_height_to_the_page(self):   # 16:9, set by the page
+        pit = long_cook()
+        self.assertIsNone(comparison([pit], self.settings).layout.height)
+        self.assertIsNone(single(pit, self.settings).layout.height)
+
     def test_setpoint_difference_chart_is_thinned(self):
         setpoint, probe = long_cook(name='Set'), long_cook(name='Probe')
         setpoint.data['temperature_c'] = 110.0
