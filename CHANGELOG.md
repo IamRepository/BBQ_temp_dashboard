@@ -4,7 +4,7 @@ All releases of the Cook Profile Dashboard, newest first. Dates are when each re
 
 ## [1.6.5] - 2026-10-13
 
-Reliable file import: fixes the five high-severity issues from the 12 October audit, plus M1 and M8.
+Reliable file import: fixes the five high-severity issues from the 12 October audit, plus M1 and M8. Commit [`c0b6a55`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/c0b6a55).
 
 ### Fixed
 - Year-first dates (2026-10-04) on days 1 to 12 of a month were read with day and month swapped, so a cook crossing midnight seemed to last 720 hours. Year-first text is now always read as year-month-day, and day-first text (03/10/2026, 03.10.2026) as day-month-year. (H1)
@@ -209,7 +209,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
-[1.6.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/49fbe62...main
+[1.6.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/49fbe62...c0b6a55
 [1.6.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/b9ade35...1665b1a
 [1.6.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/7fd6ede...7c02c22
 [1.6.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/98c1887...7fd6ede
