@@ -1,11 +1,11 @@
-# Cook Profile Dashboard v1.6.4
+# Cook Profile Dashboard v1.6.5
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
 
-**What's new in 1.6.4:** the profile dropdowns show each profile's full name with a swatch in its line colour, and open lists follow the dark theme. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
+**What's new in 1.6.5:** more reliable file import: year-first dates, elapsed-time files, UTC offsets, the autumn clock change, fixed setpoints, unlabelled and late-starting probes, and Fahrenheit files are all read correctly. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Features
-- Import one or more CSV, XLSX or XLS files; each temperature column becomes a profile. Timestamps with zone names (such as "CEST") and probe dropouts are handled, and an Import notes panel reports what was found.
+- Import one or more CSV, XLSX or XLS files; each temperature column becomes a profile. Day-first (03/10/2026) and year-first (2026-10-03) dates, Excel dates, elapsed-time columns, zone names and UTC offsets, the clock change, probe dropouts and Fahrenheit are handled, and an Import notes panel reports what was found and skipped.
 - Overlay profiles on one chart, aligned by start, peak, end or clock time, with optional smoothing (1, 5 or 10 min).
 - Per profile: display name, channel label, line colour, time offset, a trim slider for the visible data window, and a setpoint flag (dashed line).
 - Setpoint vs measured: how closely a probe followed the cooker's set temperature, with time within a chosen band.
@@ -37,10 +37,18 @@ After a release that changes files other than `app.py`, reboot the app (Manage a
 | `export_utils.py` | The Excel export |
 | `example_data.py` | Built-in example profiles (not shown in the interface) |
 | `version.py` | The running version number |
+| `tests/` | Regression tests and the small example files they use |
 | `CHANGELOG.md` | Every release and what changed |
 
+## Tests
+Run before every release, from the repository root:
+```bash
+python -m unittest discover -s tests -v
+```
+`tests/test_import.py` checks file import against the example files in `tests/data` (made by `tests/make_fixtures.py`, no real cook data). `tests/test_app.py` loads every example file into the page and exercises the main interactions.
+
 ## Input assumptions
-- Imported temperatures are Celsius.
+- Temperatures are Celsius unless the column header says °F, (F) or Fahrenheit; those are converted.
 - A time-like column is detected automatically.
 - Each detected temperature column becomes one profile.
 - For irregular files, the next recommended enhancement is an import-mapping screen.

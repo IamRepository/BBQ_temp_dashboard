@@ -14,13 +14,6 @@ def _num(s):
         x=x.str.replace('.', '',regex=False).str.replace(',','.',regex=False)
     return pd.to_numeric(x,errors='coerce')
 
-TZ_SUFFIX=re.compile(r'\s+(?:[A-Z]{3,5}|(?:UTC|GMT)\s*[+-]?\d{0,2}(?::?\d{2})?)\s*$')
-
-def _strip_timezone(s):
-    """Remove trailing zone names such as CEST/UTC/GMT+2 that pandas cannot parse."""
-    if pd.api.types.is_numeric_dtype(s) or pd.api.types.is_datetime64_any_dtype(s): return s
-    return s.astype(str).str.strip().str.replace(TZ_SUFFIX,'',regex=True)
-
 def _to_float(text,decimal):
     text=text.strip().replace(' ','')
     if text=='': return float('nan')
@@ -66,42 +59,174 @@ def _realign_short_rows(text):
         return None
     return pd.DataFrame(out,columns=header),short,moved
 
+# ---- Time column -------------------------------------------------------------------------------------------
+TIME_HEADER=re.compile(r'time|date|elapsed|hour|minute|second|\bzeit\b|\bdatum\b|\btid\b|\bdato\b',re.I)
+ZONE_HOURS={'UTC':0,'GMT':0,'Z':0,'WET':0,'WEST':1,'BST':1,'CET':1,'CEST':2,'EET':2,'EEST':3,'MSK':3,
+            'EST':-5,'EDT':-4,'CDT':-5,'MST':-7,'MDT':-6,'PST':-8,'PDT':-7}
+ZONE_NAME=re.compile(r'(?<=\d)\s+([A-Z]{3,5})\s*$')                                  # 15:49:31 CEST (AM/PM untouched)
+ZONE_OFFSET=re.compile(r'(\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?)\s*(?:UTC|GMT)?\s*([+-])(\d{1,2})(?::?(\d{2}))?\s*$')  # 15:49:31+02:00 (a time must come first)
+ZONE_Z=re.compile(r'(?<=\d)Z\s*$')                                                    # 13:49:31Z
+ISO_DATE=re.compile(r'^\s*\d{4}-\d{1,2}-\d{1,2}')
+DAY_FIRST_FORMATS=('%d/%m/%Y %H:%M:%S','%d/%m/%Y %H:%M','%d.%m.%Y %H:%M:%S','%d.%m.%Y %H:%M','%d-%m-%Y %H:%M:%S','%d-%m-%Y %H:%M',
+                   '%d/%m/%Y %H:%M:%S.%f','%d.%m.%Y %H:%M:%S.%f','%d/%m/%Y','%d.%m.%Y')
+
+def _zone_hours(text):
+    """Split a trailing time-zone (name, offset or Z) off each text; return (text without it, offset in hours or NaN)."""
+    text=text.astype('string').str.strip()
+    hours=pd.Series(float('nan'),index=text.index)
+    m=text.str.extract(ZONE_OFFSET)
+    has=m[1].notna()
+    if has.any():
+        sign=m.loc[has,1].map({'+':1,'-':-1}).astype(float)
+        hours[has]=sign*(m.loc[has,2].astype(float)+m.loc[has,3].fillna('0').astype(float)/60)
+        text[has]=text[has].str.replace(ZONE_OFFSET,r'\1',regex=True)                   # keep the time, drop the offset
+    z=text.str.contains(ZONE_Z,na=False)
+    if z.any():
+        hours[z]=0.0; text[z]=text[z].str.replace(ZONE_Z,'',regex=True)
+    name=text.str.extract(ZONE_NAME)[0]
+    known=name.isin(list(ZONE_HOURS))&hours.isna()
+    if known.any():
+        hours[known]=name[known].map(ZONE_HOURS).astype(float)
+    unknown=name.notna()&~name.isin(list(ZONE_HOURS))
+    text[known|unknown]=text[known|unknown].str.replace(ZONE_NAME,'',regex=True)   # unknown names are dropped, as before
+    return text.str.strip(),hours
+
+def _parse_text_times(text):
+    """Year-first text as year-month-day; anything else as day-month-year (never the other way round)."""
+    out=pd.Series(pd.NaT,index=text.index,dtype='datetime64[ns]')
+    iso=text.str.match(ISO_DATE,na=False)
+    if iso.any():
+        out[iso]=pd.to_datetime(text[iso].str.replace('T',' ',regex=False),format='ISO8601',errors='coerce')
+    rest=~iso&text.notna()
+    if rest.any():
+        sample=text[rest]
+        for fmt in DAY_FIRST_FORMATS:                       # a fixed format is fast and never guesses month/day
+            parsed=pd.to_datetime(sample,format=fmt,errors='coerce')
+            if parsed.notna().mean()>=.9:
+                out[rest]=parsed; break
+        else:
+            out[rest]=pd.to_datetime(sample,errors='coerce',dayfirst=True)
+    return out
+
+def _one_continuous_clock(times,hours,zone_labels):
+    """Readings that carry a zone are put on the clock in force at the first reading, so a clock change
+    (CEST to CET) neither reorders readings nor adds or removes an hour. Without zones, a single backward
+    jump of about an hour in an otherwise forward-running log is treated as the autumn clock change."""
+    note=''
+    if hours.notna().any():
+        hours=hours.ffill().bfill()
+        first=float(hours[times.notna()].iloc[0]) if times.notna().any() else float(hours.iloc[0])
+        times=times-pd.to_timedelta(hours,unit='h')+pd.Timedelta(hours=first)
+        if hours.nunique()>1:
+            names=[z for z in dict.fromkeys(zone_labels.dropna()) if z]
+            change=' to '.join(names[:2]) if len(names)>=2 else 'a different UTC offset'
+            note=(f'the clock changed during this cook ({change}); all times are shown on one continuous clock, '
+                  f'{names[0] if names else f"UTC{first:+g}"} as at the start.')
+        return times,note
+    valid=times.dropna()
+    if len(valid)>=3:
+        steps=valid.diff().dt.total_seconds().div(60).iloc[1:]
+        typical=steps[steps>0].median() if (steps>0).any() else None
+        # the wall clock steps back by one hour minus the time between readings
+        back=steps[(steps<0)&(steps>=-62)&(steps<=-(60-3*(typical or 0)-2))] if typical is not None else steps.iloc[0:0]
+        if len(back)==1 and typical<=30 and (steps<0).sum()==1:
+            after=times.index>=back.index[0]
+            times=times.copy(); times[after]=times[after]+pd.Timedelta(hours=1)
+            note=('the time went back by about an hour during this cook, as when the clocks change in autumn; '
+                  'later readings are shown one hour on, so the cook stays on one continuous clock.')
+    return times,note
+
+def parse_clock(values,header=''):
+    """Clock times from a column as naive datetimes on one continuous clock, with a note; None if not clock times."""
+    if pd.api.types.is_datetime64_any_dtype(values):
+        times=values
+        if getattr(times.dt,'tz',None) is not None:
+            local=times.dt.tz_localize(None); utc=times.dt.tz_convert('UTC').dt.tz_localize(None)
+            hours=(local-utc).dt.total_seconds()/3600
+            return _one_continuous_clock(local,hours,pd.Series(dtype='string'))
+        return _one_continuous_clock(times,pd.Series(float('nan'),index=times.index),pd.Series(dtype='string'))
+    if pd.api.types.is_numeric_dtype(values):
+        # Numbers are elapsed time, except Excel date serial numbers under a date/time header (e.g. 46298.5)
+        n=pd.to_numeric(values,errors='coerce').dropna()
+        if TIME_HEADER.search(header) and len(n) and n.min()>=20000 and n.max()<=100000 and n.max()-n.min()<60:
+            return pd.to_datetime(pd.to_numeric(values,errors='coerce'),unit='D',origin='1899-12-30').dt.round('ms'),''
+        return None
+    text,hours=_zone_hours(values)
+    zone_labels=values.astype('string').str.strip().str.extract(r'([A-Z]{2,5}|[+-]\d{1,2}:?\d{2})\s*$')[0]
+    times=_parse_text_times(text)
+    return _one_continuous_clock(times,hours,zone_labels)
+
+def _elapsed_hours(values,label):
+    n=_num(values)
+    if 'minute' in label or re.search(r'\bmins?\b',label): n=n/60
+    elif 'second' in label or re.search(r'\bsecs?\b|\(s\)',label): n=n/3600
+    return n
+
 def _time(df):
-    labels={c:str(c).lower() for c in df.columns}
-    order=[c for c in df if any(w in labels[c] for w in TIME_WORDS)]+[c for c in df if not any(w in labels[c] for w in TIME_WORDS)]
-    for c in order:
-        p=pd.to_datetime(_strip_timezone(df[c]),errors='coerce',dayfirst=True)
-        if p.notna().mean()>=.75 and p.nunique()>1:
-            return (p-p.dropna().iloc[0]).dt.total_seconds()/3600,p,str(c)
-    for c in order:
-        n=_num(df[c])
+    """Find the time column: clock times first, then elapsed time; columns with a time-like header are tried first."""
+    named=[c for c in df if TIME_HEADER.search(str(c))]
+    for c in named+[c for c in df if c not in named]:
+        parsed=parse_clock(df[c],str(c))
+        if parsed is None: continue
+        times,note=parsed
+        if times.notna().mean()>=.75 and times.nunique()>1:
+            base=times.dropna().min()
+            return (times-base).dt.total_seconds()/3600,times,str(c),note
+    for c in named:                                        # elapsed time, only from a column whose header says so
+        n=_elapsed_hours(df[c],str(c).lower())
         if n.notna().mean()>=.75 and n.nunique()>1:
-            label=labels[c]
-            if 'minute' in label or re.search(r'\bmin\b',label): n=n/60
-            if 'second' in label or re.search(r'\bsec\b',label): n=n/3600
-            return n-n.dropna().iloc[0],None,str(c)
-    return pd.Series(range(len(df)),index=df.index,dtype=float),None,'row number'
+            return n-n.dropna().min(),None,str(c),''
+    return pd.Series(range(len(df)),index=df.index,dtype=float),None,'row number',''
+
+# ---- Temperature columns -----------------------------------------------------------------------------------
+SETPOINT_WORDS=('set','target','setpoint','soll')
+NOT_TEMPERATURE=re.compile(r'%|\bfan\b|battery|\bbatt\b|humid|\brpm\b|signal|rssi|volt|\bid\b|status|alarm|power|speed|damper|blower',re.I)
+FAHRENHEIT=re.compile(r'\s*[\(\[]?\s*(?:°\s*F|deg\s*F|fahrenheit)\s*[\)\]]?|\s*[\(\[]\s*F\s*[\)\]]',re.I)
+
+def _temperature_columns(df,timecol):
+    """Every column that holds temperatures. Returns [(column, display name, values in °C, note)] and [(column, reason)]."""
+    keep,skipped=[],[]
+    for c in df:
+        if str(c)==timecol: continue
+        label=str(c); lower=label.lower()
+        if TIME_HEADER.search(label) and not any(w in lower for w in TEMP_WORDS):
+            skipped.append((label,'a time column')); continue
+        if NOT_TEMPERATURE.search(label):
+            skipped.append((label,'not a temperature')); continue
+        raw=df[c]; filled=raw.notna()&(raw.astype('string').str.strip()!='')
+        n=_num(raw); values=n.dropna()
+        if len(values)<2 or len(values)<0.9*filled.sum():          # text, notes or mostly empty
+            skipped.append((label,'no temperature readings')); continue
+        note=''; name=label
+        if FAHRENHEIT.search(label):
+            n=(n-32)*5/9; values=n.dropna(); name=FAHRENHEIT.sub('',label).strip() or label
+            note=f'"{label}" was in °F and has been converted to °C.'
+        if values.between(-50,400).mean()<.9:
+            skipped.append((label,'values outside the temperature range')); continue
+        if values.nunique()<2 and not any(w in lower for w in TEMP_WORDS+SETPOINT_WORDS):
+            skipped.append((label,'the same value throughout')); continue
+        keep.append((c,name,n,note))
+    return keep,skipped
 
 def dataframe_to_profiles(df,source,sheet=None,color_start=0):
     df=df.rename(columns=lambda c: str(c).strip()).dropna(how='all').dropna(axis=1,how='all')
-    elapsed,timestamp,timecol=_time(df)
-    columns=[]
-    for c in df:
-        if str(c)==timecol: continue
-        n=_num(df[c]); label=str(c).lower()
-        if n.notna().mean()>=.6 and n.nunique()>1 and n.dropna().between(-50,400).mean()>=.9:
-            columns.append((2 if any(w in label for w in TEMP_WORDS) else 0,str(c)))
-    preferred=[c for score,c in columns if score]
-    columns=preferred or [c for _,c in columns]
-    profiles=[]
-    for i,c in enumerate(columns):
-        out=pd.DataFrame({'elapsed_hours':elapsed,'temperature_c':_num(df[c])})
+    elapsed,timestamp,timecol,clock_note=_time(df)
+    columns,skipped=_temperature_columns(df,timecol)
+    profiles=[]; notes=[]
+    for i,(c,name,values,note) in enumerate(columns):
+        out=pd.DataFrame({'elapsed_hours':elapsed,'temperature_c':values})
         if timestamp is not None: out['timestamp']=timestamp
         out=out.dropna(subset=['elapsed_hours','temperature_c']).sort_values('elapsed_hours').drop_duplicates('elapsed_hours',keep='last')
         if len(out)<2: continue
-        base=Path(source).stem; name=f'{base} - {sheet} - {c}' if sheet else f'{base} - {c}'
-        profiles.append(CookProfile(uuid.uuid4().hex,name,source,str(c),COLORS[(color_start+i)%len(COLORS)],out.reset_index(drop=True),metadata={'sheet':sheet or '', 'time_column':timecol}))
-    return profiles,f"{source}: detected '{timecol}' and created {len(profiles)} profile(s)."
+        base=Path(source).stem; full=f'{base} - {sheet} - {name}' if sheet else f'{base} - {name}'
+        profiles.append(CookProfile(uuid.uuid4().hex,full,source,name,COLORS[(color_start+i)%len(COLORS)],out.reset_index(drop=True),metadata={'sheet':sheet or '', 'time_column':timecol}))
+        if note: notes.append(note)
+    where=f'{source} ({sheet})' if sheet else source
+    message=f"{where}: detected '{timecol}' and created {len(profiles)} profile(s)."
+    if clock_note: message+=' Note: '+clock_note
+    for note in notes: message+=' '+note
+    if skipped: message+=' Skipped: '+'; '.join(f'"{c}" ({why})' for c,why in skipped)+'.'
+    return profiles,message
 
 def _read_csv(raw,name):
     text=None

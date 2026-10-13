@@ -2,6 +2,29 @@
 
 All releases of the Cook Profile Dashboard, newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.6.5] - 2026-10-13
+
+Reliable file import: fixes the five high-severity issues from the 12 October audit, plus M1 and M8.
+
+### Fixed
+- Year-first dates (2026-10-04) on days 1 to 12 of a month were read with day and month swapped, so a cook crossing midnight seemed to last 720 hours. Year-first text is now always read as year-month-day, and day-first text (03/10/2026, 03.10.2026) as day-month-year. (H1)
+- Files with only an elapsed-time column (minutes, hours or seconds) were read as clock times in nanoseconds, so every cook lasted zero hours. Number columns are no longer treated as dates; Excel date serial numbers under a date header are still read as dates. (H2)
+- Timestamps with a UTC offset (+02:00, Z, GMT+2) crashed the whole page. They are now converted to one clock time per file. (H3)
+- A cook across the autumn clock change was scrambled: the repeated hour was sorted into the wrong order and the cook looked an hour short. Zone names (CEST, CET and others) and offsets are now used to keep one continuous clock, the one in force when the cook started, with a note in Import notes. A log without zone names that steps back by about an hour once is corrected the same way. (H4)
+- A setpoint column with one fixed value (for example 120 °C all cook) was discarded. Constant columns whose header names a temperature or setpoint are kept. (H5)
+- Columns without a temperature word in the header (for example "Target") were dropped whenever another column had one. Every column in the temperature range is now imported. Columns that are clearly not temperatures (%, fan, battery, humidity, rpm, signal and similar) are skipped, and Import notes lists them with the reason. (M1)
+- A probe plugged in partway through a cook was dropped when it had readings in less than 60% of the rows. Any column whose filled cells are readings is now kept. (Found while testing M1.)
+- Columns in Fahrenheit were shown as °C. Headers with °F, (F) or Fahrenheit are converted to °C, and Import notes says so. (M8)
+
+### Added
+- Regression tests in `tests/`: 22 tests, covering each fixed issue with its own small example file, formats that already worked, and the main page interactions. Run with `python -m unittest discover -s tests -v`.
+
+### Unchanged
+- Your thermometer files (Weber Connect, Smoque XL) import exactly as before: same profiles, times, readings and notes.
+
+### Upgrade note
+- Reboot the app on Streamlit Community Cloud after deploying (Manage app, three dots, Reboot app): `profile_loader.py` changed.
+
 ## [1.6.4] - 2026-10-12
 
 Colour-coded profile dropdowns with full names. Commit [`1665b1a`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/1665b1a).
@@ -186,6 +209,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.6.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/49fbe62...main
 [1.6.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/b9ade35...1665b1a
 [1.6.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/7fd6ede...7c02c22
 [1.6.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/98c1887...7fd6ede
