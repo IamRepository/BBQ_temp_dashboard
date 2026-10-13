@@ -4,7 +4,7 @@ All releases of the Cook Profile Dashboard, newest first. Dates are when each re
 
 ## [1.6.8] - 2026-10-13
 
-Layout: Profile details above the chart, and 16:9 charts. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+Layout: Profile details above the chart, and 16:9 charts. Commit [`d6654f9`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/d6654f9).
 
 ### Changed
 - **Profile details moved above the chart.** It was a narrow column to the right of the comparison chart. It is now a full-width panel between the overview cards and the chart, so a change to a profile shows in the chart directly below it.
@@ -291,7 +291,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
-[1.6.8]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/4798881...COMMIT
+[1.6.8]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/4798881...d6654f9
 [1.6.7]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/5bd1ab2...4798881
 [1.6.6]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/c0b6a55...5bd1ab2
 [1.6.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/49fbe62...c0b6a55
