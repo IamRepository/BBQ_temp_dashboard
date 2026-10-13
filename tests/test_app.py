@@ -165,7 +165,7 @@ class V167Interactions(unittest.TestCase):
         self.assertEqual(shown['Setpoint'], 6)
         self.assertEqual(shown['Probe 1'], 6)
         self.assertTrue(any('left as they were' in c.value for c in at.caption))   # the 15:34 file has nothing inside
-        self.assertTrue(any(c.value.startswith('Window: 10:00 to 10:05 on 03/10/2026') for c in at.caption), [c.value for c in at.caption])
+        self.assertTrue(any('Window: 10:00 to 10:05 on 03/10/2026, all 5 profiles' in c.value for c in at.caption), [c.value for c in at.caption])
         at.button(key='reset_all_trims').click().run()
         self.assertTrue(all(len(p.plotted_data) == len(p.data) for p in at.session_state['profiles']))
 
@@ -179,9 +179,9 @@ class V167Interactions(unittest.TestCase):
         profile = next(p for p in at.session_state['profiles'] if p.profile_id == selected)
         self.assertEqual(at.slider(key=f'edit_{selected}_trim').value, profile.trim_bounds())
 
-    def test_full_profile_name_under_the_box(self):   # L6
+    def test_full_profile_name_under_the_box(self):   # L6: since 1.6.9 the status line starts with the full name
         name = self.profiles[0].name
-        self.assertTrue(any('profile-fullname' in m.value and name in m.value for m in self.at.markdown))
+        self.assertTrue(any(c.value.startswith(name + '  |  ') for c in self.at.caption), [c.value for c in self.at.caption])
 
     def test_download_button_present(self):   # M6: the file is built on click
         self.assertEqual(self.at.get('download_button')[0].proto.label, 'Download Excel file')
@@ -208,3 +208,31 @@ class V168Layout(unittest.TestCase):
         self.assertLess(source.index("key='profile_details_card'"), source.index("key='chart_comparison'"))
         self.assertNotIn('main, side = st.columns', source)
         self.assertEqual(self.at.checkbox(key=f"edit_{self.at.session_state['selected_profile_id']}_setpoint").label, 'Setpoint (dashed line)')
+
+
+class V169CompactLayout(unittest.TestCase):
+    def setUp(self):
+        self.profiles, _ = load_uploaded_files([Upload(DATA / 'ok_device_cest.csv'), Upload(DATA / 'h5_fixed_setpoint.csv')])
+        self.at = page(self.profiles)
+
+    def test_summary_is_the_chart_subtitle(self):
+        import json
+        layout = json.loads(self.at.get('plotly_chart')[0].proto.spec)['layout']
+        self.assertEqual(layout['title']['text'], 'Temperature profiles')
+        self.assertEqual(layout['title']['subtitle']['text'], '5 profiles  |  2 devices  |  0.0 - 0.1 h duration range')
+        self.assertFalse(any('Temperature profile comparison' in m.value for m in self.at.markdown))
+
+    def test_one_card_controls_then_chart_then_export(self):
+        source = (Path(__file__).resolve().parent.parent / 'app.py').read_text()
+        order = [source.index(k) for k in ("key='profile_details_card'", "key='selected_profile_id'", "key='trim_all'",
+                                           "key='chart_comparison'", "key='export_interval'", "key='download_visible_profiles'")]
+        self.assertEqual(order, sorted(order))
+
+    def test_status_line_has_file_samples_and_offset(self):
+        at = self.at
+        selected = at.session_state['selected_profile_id']
+        at.number_input(key=f'edit_{selected}_offset_min').set_value(3.5).run()
+        status = next(c.value for c in at.caption if c.value.startswith(self.profiles[0].name))
+        self.assertIn('ok_device_cest.csv', status)
+        self.assertIn('samples shown', status)
+        self.assertIn('offset +0:03:30 (h:mm:ss)', status)

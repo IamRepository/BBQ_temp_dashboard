@@ -66,20 +66,23 @@ def _palette(mode):
     return {'bg': '#FFFFFF', 'plot': '#FFFFFF', 'text': '#172033', 'muted': '#64748B', 'grid': 'rgba(100,116,139,0.11)', 'border': '#E2E8F0'}
 
 
-def _layout(fig, settings, title, height=None, x_title=None, y_title='Temperature (°C)'):
+def _layout(fig, settings, title, height=None, x_title=None, y_title='Temperature (°C)', subtitle=None):
     # No height: the page sizes the comparison and single-profile charts at 16:9 to the card width.
     colors = _palette(settings['theme'])
+    heading = {'text': title, 'x': 0.02, 'xanchor': 'left', 'font': {'size': 18}}
+    if subtitle:
+        heading['subtitle'] = {'text': subtitle, 'font': {'size': 12, 'color': colors['muted']}}
     fig.update_layout(
-        title={'text': title, 'x': 0.02, 'xanchor': 'left', 'font': {'size': 18}},
+        title=heading,
         height=height,
         paper_bgcolor=colors['bg'],
         plot_bgcolor=colors['plot'],
         font={'color': colors['text'], 'family': 'Inter, Arial, sans-serif'},
         hovermode='x unified',
         showlegend=settings['legend'],
-        legend={'orientation': 'h', 'y': 1.08, 'x': 0.02, 'font': {'size': 11, 'color': colors['muted']}, 'bgcolor': 'rgba(0,0,0,0)'},
+        legend={'orientation': 'h', 'y': 1.02, 'yanchor': 'bottom', 'x': 0.02, 'font': {'size': 11, 'color': colors['muted']}, 'bgcolor': 'rgba(0,0,0,0)'},
         hoverlabel={'bgcolor': colors['bg'], 'bordercolor': colors['border'], 'font': {'color': colors['text']}},
-        margin={'l': 64, 'r': 30, 't': 86, 'b': 58},
+        margin={'l': 64, 'r': 30, 't': 122 if subtitle else 86, 'b': 58},
     )
     axis = dict(showgrid=settings['grid'], gridcolor=colors['grid'], zeroline=False, linecolor=colors['border'], tickfont={'color': colors['muted']}, title_font={'color': colors['muted']})
     if x_title is None:
@@ -94,7 +97,7 @@ def without_clock(profiles):
     return [p for p in profiles if 'timestamp' not in p.data]
 
 
-def comparison(profiles, settings):
+def comparison(profiles, settings, subtitle=None):
     fig = go.Figure()
     if settings['alignment'] == 'Clock time':
         # A profile with only elapsed time has no time of day; the page names the ones left out.
@@ -111,7 +114,7 @@ def comparison(profiles, settings):
             meta=[profile.name, profile.channel],
             hovertemplate='<b>%{meta[0]}</b><br>Channel: %{meta[1]}<br>Temperature: %{y:.1f} °C<br>Time: %{x}<extra></extra>',
         ))
-    return _layout(fig, settings, 'Temperature profiles')
+    return _layout(fig, settings, 'Temperature profiles', subtitle=subtitle)
 
 
 def single(profile, settings):
