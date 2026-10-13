@@ -4,7 +4,7 @@ All releases of the Cook Profile Dashboard, newest first. Dates are when each re
 
 ## [1.6.6] - 2026-10-13
 
-Everyday use: fixes M2 to M5, L1 to L5, L8 and L9 from the 12 October audit. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+Everyday use: fixes M2 to M5, L1 to L5, L8 and L9 from the 12 October audit. Commit [`5bd1ab2`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/5bd1ab2).
 
 ### Fixed
 - Pressing "Import uploaded files" a second time added the same files again (4 profiles became 8 with identical names). A file already loaded, or listed twice in one import, is now skipped with a note in Import notes. Files are recognised by their contents, so a renamed copy is skipped too. (M2)
@@ -237,7 +237,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
-[1.6.6]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/c0b6a55...COMMIT
+[1.6.6]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/c0b6a55...5bd1ab2
 [1.6.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/49fbe62...c0b6a55
 [1.6.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/b9ade35...1665b1a
 [1.6.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/7fd6ede...7c02c22
