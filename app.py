@@ -1,6 +1,6 @@
 import streamlit as st
 from profile_loader import load_uploaded_files
-from chart_builder import comparison, single, deviation
+from chart_builder import comparison, single, deviation, without_clock
 from analysis import compare
 from export_utils import EXPORT_INTERVALS, export_filename, profiles_to_excel
 from version import VERSION
@@ -33,6 +33,16 @@ def clear_profiles():
     st.session_state.selected_profile_id = None
 
 
+def clear_rename_error():
+    st.session_state.rename_error = None
+
+
+def offset_readout(hours):
+    # +0:03:20 style, for the offset box
+    seconds = round(abs(hours) * 3600)
+    return f"{'-' if hours < 0 else '+'}{seconds // 3600}:{seconds % 3600 // 60:02d}:{seconds % 60:02d}"
+
+
 def rename_profile(profile_id, widget_key):
     # Runs before the rerun, so the new name shows everywhere immediately.
     new_name = st.session_state[widget_key].strip()
@@ -52,7 +62,7 @@ with st.sidebar:
     keep = st.checkbox('Keep existing profiles', True, key='keep_existing_profiles')
     if st.button('Import uploaded files', type='primary', width='stretch', disabled=not files, key='import_profiles_button'):
         try:
-            new, messages = load_uploaded_files(files)
+            new, messages = load_uploaded_files(files, existing=P if keep else [])
             st.session_state.profiles = (P + new) if keep else new
             previously_shown = st.session_state.get('visible_profile_ids', []) if keep else []
             st.session_state.visible_profile_ids = previously_shown + [p.profile_id for p in new]
@@ -261,14 +271,14 @@ visible = [profile_by_id[pid] for pid in shown_ids if pid in profile_by_id]
 for profile in P:
     profile.visible = profile.profile_id in shown_ids
 
-channels = len({p.channel for p in visible})
+devices = len({p.source_file for p in visible})
 durations = [p.duration_hours for p in visible]
 mins = [p.minimum_c for p in visible]
 maxs = [p.maximum_c for p in visible]
 
 c1, c2, c3, c4 = st.columns(4)
 c1.metric('PROFILES', len(visible), f'{len(P)} loaded', delta_color='off')
-c2.metric('CHANNELS', channels, 'Unique labels', delta_color='off')
+c2.metric('DEVICES', devices, 'Source files', delta_color='off')
 c3.metric('DURATION RANGE', f'{min(durations):.1f} - {max(durations):.1f} h' if durations else 'No data', 'Visible profiles', delta_color='off')
 c4.metric('TEMPERATURE RANGE', f'{min(mins):.1f} - {max(maxs):.1f} °C' if mins else 'No data', 'Visible profiles', delta_color='off')
 
@@ -278,7 +288,7 @@ with side:
     with st.container(border=True):
         st.markdown('<div class="card-title">Profile details</div><div class="card-note">Select and customize one profile</div>', unsafe_allow_html=True)
         profile_dropdown_style('Profile', [profile_by_id[pid] for pid in profile_ids])
-        selected_id = st.selectbox('Profile', profile_ids, format_func=lambda pid: profile_by_id[pid].name, key='selected_profile_id')
+        selected_id = st.selectbox('Profile', profile_ids, format_func=lambda pid: profile_by_id[pid].name, key='selected_profile_id', on_change=clear_rename_error)
         selected = profile_by_id[selected_id]
         st.caption(f'{selected.source_file}  |  {len(selected.plotted_data):,} of {len(selected.data):,} samples shown')
         edit_key = f'edit_{selected.profile_id}'
@@ -287,7 +297,11 @@ with side:
         if st.session_state.get('rename_error'):
             st.warning(st.session_state.rename_error)
         channel = st.text_input('Channel label', selected.channel, key=f'{edit_key}_channel')
-        offset = st.slider('Time offset (hours)', -24.0, 24.0, float(selected.offset_hours), .25, key=f'{edit_key}_offset')
+        offset_minutes = st.number_input('Time offset (minutes)', min_value=-1440.0, max_value=1440.0, value=float(selected.offset_hours) * 60,
+                                         step=1.0, format='%.2f', key=f'{edit_key}_offset_min',
+                                         help='Shifts this profile in time, for example to correct a device clock. Whole minutes, with decimals for seconds (3.5 = 3 min 30 s). Up to 24 hours either way.')
+        offset = offset_minutes / 60
+        st.caption(f'Offset {offset_readout(offset)} (h:mm:ss)')
         color = st.color_picker('Line color', selected.color, key=f'{edit_key}_color')
         selected.is_setpoint = st.checkbox('This is a setpoint (dashed line)', selected.is_setpoint, key=f'{edit_key}_setpoint',
                                            help='Use for a temperature the cooker was set to hold. It is drawn dashed, never smoothed, and can be compared with a probe below.')
@@ -327,8 +341,11 @@ with main:
     with st.container(border=True):
         st.markdown('<div class="card-title">Temperature profile comparison</div>', unsafe_allow_html=True)
         if visible:
-            st.markdown(f'<div class="card-note">{len(visible)} profiles  |  {channels} channels  |  {min(durations):.1f} - {max(durations):.1f} h duration range</div>', unsafe_allow_html=True)
-        st.plotly_chart(comparison(visible, settings), width='stretch', config=chart_config('cook_profiles'))
+            st.markdown(f'<div class="card-note">{len(visible)} profiles  |  {devices} devices  |  {min(durations):.1f} - {max(durations):.1f} h duration range</div>', unsafe_allow_html=True)
+        if alignment == 'Clock time' and without_clock(visible):
+            st.caption('These profiles have no clock times, so they are not shown in Clock alignment: '
+                       + ', '.join(p.name for p in without_clock(visible)) + '. Choose Start, Peak or End to see them.')
+        st.plotly_chart(comparison(visible, settings), width='stretch', theme=None, config=chart_config('cook_profiles'))
 
 st.write('')
 setpoints = [p for p in P if p.is_setpoint]
@@ -364,7 +381,7 @@ with st.container(border=True):
             if smoothing_minutes:
                 note += f' The probe is smoothed over {smoothing_minutes} min.'
             st.caption(note)
-            st.plotly_chart(deviation(result, settings), width='stretch', config=chart_config('setpoint_difference'))
+            st.plotly_chart(deviation(result, settings), width='stretch', theme=None, config=chart_config('setpoint_difference'))
 
 st.write('')
 st.markdown('<div class="card-title">Selected profile statistics</div><div class="card-note">Key characteristics of the active profile</div>', unsafe_allow_html=True)
@@ -374,6 +391,6 @@ b.metric('DURATION', f'{selected.duration_hours:.1f} h')
 c.metric('MAXIMUM TEMPERATURE', f'{selected.maximum_c:.1f} °C')
 d.metric('VISIBLE SAMPLES', f'{len(selected.plotted_data):,}', f'{len(selected.data):,} total', delta_color='off')
 with st.container(border=True):
-    st.plotly_chart(single(selected, settings), width='stretch', config=chart_config(selected.name))
+    st.plotly_chart(single(selected, settings), width='stretch', theme=None, config=chart_config(selected.name))
     with st.expander('Preview imported data'):
         st.dataframe(selected.export_frame().head(500), width='stretch')

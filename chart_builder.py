@@ -65,8 +65,16 @@ def _layout(fig, settings, title, height=650, x_title=None, y_title='Temperature
     return fig
 
 
+def without_clock(profiles):
+    """Profiles that have no clock times, so cannot be placed in Clock alignment."""
+    return [p for p in profiles if 'timestamp' not in p.data]
+
+
 def comparison(profiles, settings):
     fig = go.Figure()
+    if settings['alignment'] == 'Clock time':
+        # A profile with only elapsed time has no time of day; the page names the ones left out.
+        profiles = [p for p in profiles if p not in without_clock(profiles)]
     for profile in profiles:
         frame = _frame(profile)
         y = _y(profile, frame, settings)
@@ -81,6 +89,8 @@ def comparison(profiles, settings):
 
 
 def single(profile, settings):
+    if settings['alignment'] == 'Clock time' and 'timestamp' not in profile.data:
+        settings = dict(settings, alignment='Original timeline')   # no time of day: draw it on its own hours
     frame = _frame(profile)
     y = _y(profile, frame, settings)
     x = _x(profile, settings['alignment'], y)

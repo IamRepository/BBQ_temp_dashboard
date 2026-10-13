@@ -3,6 +3,7 @@
 Each test class matches an issue from the audit of v1.6.4 (H1-H5, M1, M8) or guards a
 format that already worked. The example files are made by tests/make_fixtures.py.
 """
+import io
 import sys
 import unittest
 from pathlib import Path
@@ -13,8 +14,9 @@ ROOT = Path(__file__).resolve().parent.parent
 DATA = Path(__file__).resolve().parent / 'data'
 sys.path.insert(0, str(ROOT))
 
-from profile_loader import load_uploaded_files  # noqa: E402
-from export_utils import export_table, profiles_to_excel  # noqa: E402
+from profile_loader import COLORS, load_uploaded_files  # noqa: E402
+from export_utils import export_sheets, export_table, profiles_to_excel  # noqa: E402
+from chart_builder import comparison  # noqa: E402
 from analysis import compare  # noqa: E402
 
 
@@ -151,6 +153,80 @@ class FormatsThatAlreadyWork(unittest.TestCase):
         profiles, _ = load('ok_two_sheets.xlsx')
         self.assertEqual(len(profiles), 2)
         self.assertEqual(profiles[1].data.timestamp.iloc[0], ts('2026-10-04 10:00'))
+
+
+class M2DuplicateFiles(unittest.TestCase):
+    def test_a_file_already_loaded_is_skipped(self):
+        first, _ = load('ok_device_cest.csv')
+        again, messages = load_uploaded_files([Upload(DATA / 'ok_device_cest.csv')], existing=first)
+        self.assertEqual(again, [])
+        self.assertTrue(any('already imported' in m for m in messages), messages)
+
+    def test_the_same_file_twice_in_one_import(self):
+        profiles, messages = load_uploaded_files([Upload(DATA / 'h5_fixed_setpoint.csv'), Upload(DATA / 'h5_fixed_setpoint.csv')])
+        self.assertEqual(len(profiles), 2)
+        self.assertTrue(any('already imported' in m for m in messages), messages)
+
+
+class M3Colours(unittest.TestCase):
+    def test_palette_is_the_validated_one(self):
+        self.assertEqual(COLORS, ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300', '#9085e9', '#e66767'])
+
+    def test_a_second_import_takes_unused_colours(self):
+        first, _ = load('ok_device_cest.csv')
+        second, _ = load_uploaded_files([Upload(DATA / 'h5_fixed_setpoint.csv')], existing=first)
+        used = {p.color for p in first}
+        self.assertEqual(len(used), 3)
+        self.assertTrue(all(p.color not in used for p in second), [p.color for p in second])
+        self.assertEqual(len({p.color for p in first + second}), 5)
+
+
+class L2NamesOnReimport(unittest.TestCase):
+    def test_single_sheet_export_gives_clean_names(self):
+        profiles, _ = load('l2_dashboard_export.xlsx')
+        self.assertEqual([p.name for p in profiles], ['l2_dashboard_export - Connet - Probe 1', 'l2_dashboard_export - Smoque_XL - Probe 2'])
+        self.assertEqual([p.channel for p in profiles], ['Connet - Probe 1', 'Smoque_XL - Probe 2'])
+
+    def test_two_sheets_keep_the_sheet_name(self):
+        profiles, _ = load('ok_two_sheets.xlsx')
+        self.assertEqual([p.name for p in profiles], ['ok_two_sheets - Cook 1 - Meat', 'ok_two_sheets - Cook 2 - Meat'])
+
+
+class L3ExportSheets(unittest.TestCase):
+    def test_clock_and_elapsed_profiles_go_on_separate_sheets(self):
+        clock, _ = load('ok_device_cest.csv')
+        elapsed, _ = load('h2_elapsed_hours.csv')
+        sheets = export_sheets(clock + elapsed, '1 min')
+        self.assertEqual([name for name, _ in sheets], ['Cook profiles', 'Elapsed time'])
+        self.assertEqual(sheets[0][1].columns[0], 'Timestamp')
+        self.assertEqual(sheets[1][1].columns[0], 'Elapsed time (h)')
+        book = pd.ExcelFile(io.BytesIO(profiles_to_excel(clock + elapsed, '1 min')))
+        self.assertEqual(book.sheet_names, ['Cook profiles', 'Elapsed time'])
+
+    def test_clock_only_gives_one_sheet(self):
+        clock, _ = load('ok_device_cest.csv')
+        self.assertEqual([name for name, _ in export_sheets(clock, '1 min')], ['Cook profiles'])
+
+
+class L4PreviewOffset(unittest.TestCase):
+    def test_offset_moves_timestamps_too(self):
+        profiles, _ = load('h5_fixed_setpoint.csv')
+        p = profiles[0]
+        p.offset_hours = 0.5
+        frame = p.export_frame()
+        self.assertEqual(frame.timestamp.iloc[0], ts('2026-10-03 10:30'))
+        self.assertAlmostEqual(frame.elapsed_hours.iloc[0], 0.5)
+
+
+class L9ClockAlignment(unittest.TestCase):
+    def test_elapsed_only_profiles_are_left_out_of_the_clock_chart(self):
+        clock, _ = load('ok_device_cest.csv')
+        elapsed, _ = load('h2_elapsed_hours.csv')
+        settings = {'alignment': 'Clock time', 'theme': 'Light', 'grid': True, 'legend': True, 'width': 2, 'smoothing_minutes': 0}
+        names = [t.name for t in comparison(clock + elapsed, settings).data]
+        self.assertEqual(names, [p.name for p in clock])
+        settings['alignment'] = 'Original timeline'
+        self.assertEqual(len(comparison(clock + elapsed, settings).data), len(clock + elapsed))
 
 
 if __name__ == '__main__':

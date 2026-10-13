@@ -1,16 +1,17 @@
-# Cook Profile Dashboard v1.6.5
+# Cook Profile Dashboard v1.6.6
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
 
-**What's new in 1.6.5:** more reliable file import: year-first dates, elapsed-time files, UTC offsets, the autumn clock change, fixed setpoints, unlabelled and late-starting probes, and Fahrenheit files are all read correctly. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
+**What's new in 1.6.6:** everyday fixes: pressing Import twice no longer duplicates profiles, each new profile gets its own colour from a colour-blind-safe palette, chart titles are readable in dark mode, time offsets can be set to the minute, and elapsed-only files get their own export sheet. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Features
 - Import one or more CSV, XLSX or XLS files; each temperature column becomes a profile. Day-first (03/10/2026) and year-first (2026-10-03) dates, Excel dates, elapsed-time columns, zone names and UTC offsets, the clock change, probe dropouts and Fahrenheit are handled, and an Import notes panel reports what was found and skipped.
 - Overlay profiles on one chart, aligned by start, peak, end or clock time, with optional smoothing (1, 5 or 10 min).
-- Per profile: display name, channel label, line colour, time offset, a trim slider for the visible data window, and a setpoint flag (dashed line).
+- Per profile: display name, channel label, line colour, time offset in minutes, a trim slider for the visible data window, and a setpoint flag (dashed line).
 - Setpoint vs measured: how closely a probe followed the cooker's set temperature, with time within a chosen band.
 - Light and dark themes; chart images as PNG or JPEG from each chart's camera icon.
-- Excel export of the visible data, with the trim and time offsets applied.
+- Excel export of the visible data, with the trim and time offsets applied. Profiles with clock times share one sheet; elapsed-only profiles go on a second sheet.
+- Files already imported are skipped, and line colours are taken from a palette checked for colour-blind readers, so each profile has its own colour.
 
 ## Run locally
 ```bash

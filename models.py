@@ -49,6 +49,9 @@ class CookProfile:
         return 0.0 if frame.empty else float(frame.temperature_c.max())
 
     def export_frame(self):
+        # The visible data window with the time offset applied to both time columns, as in the charts and export.
         out = self.plotted_data
         out['elapsed_hours'] = out['elapsed_hours'] + self.offset_hours
+        if 'timestamp' in out:
+            out['timestamp'] = out['timestamp'] + pd.to_timedelta(self.offset_hours, unit='h')
         return out

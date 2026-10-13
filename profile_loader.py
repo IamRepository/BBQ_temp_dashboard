@@ -1,9 +1,12 @@
-import csv, io, itertools, re, uuid
+import csv, hashlib, io, itertools, re, uuid
 from pathlib import Path
 import pandas as pd
 from models import CookProfile
 
-COLORS=['#f97316','#38bdf8','#a78bfa','#22c55e','#f43f5e','#eab308','#14b8a6','#fb7185']
+# Line colours: 8 hues checked with a palette validator on both the light (#FFFFFF) and dark (#111827) chart
+# backgrounds: distinguishable with colour-blindness, at least 3:1 contrast on both. More than 8 hues cannot be
+# told apart reliably, so a 9th profile reuses the least-used colour.
+COLORS=['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767']
 TIME_WORDS=('time','date','timestamp','datetime','elapsed','hour','minute')
 TEMP_WORDS=('temp','temperature','probe','meat','point','flat','pit','ambient','cavity','grate')
 
@@ -181,6 +184,7 @@ def _time(df):
 # ---- Temperature columns -----------------------------------------------------------------------------------
 SETPOINT_WORDS=('set','target','setpoint','soll')
 NOT_TEMPERATURE=re.compile(r'%|\bfan\b|battery|\bbatt\b|humid|\brpm\b|signal|rssi|volt|\bid\b|status|alarm|power|speed|damper|blower',re.I)
+CELSIUS=re.compile(r'\s*[\(\[]\s*(?:°\s*C|deg\s*C|celsius)\s*[\)\]]\s*$|\s+°\s*C\s*$',re.I)
 FAHRENHEIT=re.compile(r'\s*[\(\[]?\s*(?:°\s*F|deg\s*F|fahrenheit)\s*[\)\]]?|\s*[\(\[]\s*F\s*[\)\]]',re.I)
 
 def _temperature_columns(df,timecol):
@@ -198,6 +202,7 @@ def _temperature_columns(df,timecol):
         if len(values)<2 or len(values)<0.9*filled.sum():          # text, notes or mostly empty
             skipped.append((label,'no temperature readings')); continue
         note=''; name=label
+        if CELSIUS.search(label): name=CELSIUS.sub('',label).strip() or label
         if FAHRENHEIT.search(label):
             n=(n-32)*5/9; values=n.dropna(); name=FAHRENHEIT.sub('',label).strip() or label
             note=f'"{label}" was in °F and has been converted to °C.'
@@ -244,18 +249,44 @@ def _read_csv(raw,name):
         except Exception: pass
     raise ValueError('the file could not be parsed as CSV')
 
-def load_uploaded_files(files):
+def file_fingerprint(raw):
+    """Identifies a file by its content, so the same file is not imported twice."""
+    return hashlib.sha1(raw).hexdigest()
+
+def assign_colours(new,existing):
+    """Give each new profile the first colour not yet in use; past 8 profiles, the least-used colour."""
+    counts={c:0 for c in COLORS}
+    for p in existing:
+        if p.color in counts: counts[p.color]+=1
+    for p in new:
+        colour=min(COLORS,key=lambda c:(counts[c],COLORS.index(c)))
+        p.color=colour; counts[colour]+=1
+    return new
+
+def load_uploaded_files(files,existing=None):
+    """Profiles from uploaded files. Files whose content is already loaded (in `existing` or earlier in this
+    batch) are skipped with a note; new profiles get colours that are not in use yet."""
+    existing=list(existing or [])
+    seen={p.metadata.get('fingerprint') for p in existing}
     result=[]; messages=[]
     for f in files:
         try:
             raw=f.getvalue(); ext=Path(f.name).suffix.lower()
+            fingerprint=file_fingerprint(raw)
+            if fingerprint in seen:
+                messages.append(f'{f.name}: already imported, skipped.'); continue
+            seen.add(fingerprint)
             if ext=='.csv':
                 table,note=_read_csv(raw,f.name); tables={None:table}
                 if note: messages.append(note)
             else:
                 tables=pd.read_excel(io.BytesIO(raw),sheet_name=None,engine='xlrd' if ext=='.xls' else 'openpyxl')
+                if len(tables)==1: tables={None:next(iter(tables.values()))}   # one sheet: no sheet name in profile names
             for sheet,df in tables.items():
-                p,m=dataframe_to_profiles(df,f.name,sheet,len(result)); result.extend(p); messages.append(m)
+                p,m=dataframe_to_profiles(df,f.name,sheet,0)
+                for profile in p: profile.metadata['fingerprint']=fingerprint
+                result.extend(p); messages.append(m)
         except Exception as exc:
             messages.append(f'{f.name}: skipped, {exc}')
+    assign_colours(result,existing)
     return result,messages

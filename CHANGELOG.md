@@ -2,6 +2,34 @@
 
 All releases of the Cook Profile Dashboard, newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.6.6] - 2026-10-13
+
+Everyday use: fixes M2 to M5, L1 to L5, L8 and L9 from the 12 October audit. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Fixed
+- Pressing "Import uploaded files" a second time added the same files again (4 profiles became 8 with identical names). A file already loaded, or listed twice in one import, is now skipped with a note in Import notes. Files are recognised by their contents, so a renamed copy is skipped too. (M2)
+- A second import with "Keep existing profiles" reused colours already on the chart. New profiles now take the first colour not in use. (M3)
+- Chart titles were dark grey on the dark card in dark mode (contrast 1.4:1). Streamlit's chart theme overrode the title colour; charts are now drawn with the app's own colours, and the titles measure 14.3:1. All other chart text is at least 7:1. (M4)
+- The rename warning "Profile names must be unique" stayed on screen after switching to another profile. It now clears. (L1)
+- Importing the dashboard's own Excel file gave names like "Cook profiles 2026-10-03 - Cook profiles - Connet - Probe 1 (°C)". " (°C)" is dropped from column names, and the sheet name is left out when a workbook has only one sheet. (L2)
+- The Preview imported data table added the time offset to elapsed hours but not to the timestamps. Both now move. (L4)
+- In Clock alignment, profiles without clock times were drawn on hours beside clock-time profiles. They are now left out of that chart with a note naming them; Start, Peak and End alignment still show them. The single-profile chart shows them on their own timeline. (L9)
+
+### Changed
+- Line colours come from a new 8-colour palette, checked with a colour-vision validator on the light and dark chart backgrounds: every neighbouring pair stays distinct for red-green and blue-yellow colour blindness. The old palette had a violet and sky blue that look alike to colour-blind readers, and a yellow too pale on white. The plan said 12 colours; only 8 pass these checks, so a ninth profile reuses the least-used colour. (M3)
+- The time offset is now a number box in minutes (to 0.01 min, up to ±24 h), with arrows that step one minute, and a readout in h:mm:ss below it. It replaces the slider with 15-minute steps, so a device clock a few minutes off can be corrected. Existing offsets carry over. (M5)
+- The Excel export keeps clock time for profiles that have it, on the "Cook profiles" sheet. Elapsed-only profiles go on a second sheet, "Elapsed time", counted in hours from their own start. Before, one elapsed-only profile switched the whole file to elapsed hours, so devices no longer lined up. Exports with only clock-time profiles are unchanged. (L3)
+- The CHANNELS card is now DEVICES and counts source files. It counted distinct channel labels, so two devices' "Probe 1" counted once. (L5)
+
+### Corrected
+- The 1.6.3 entry said no text was below 3:1 contrast. That audit covered the page text only, not text inside charts, which is how the dark-mode chart titles (M4) were missed. The entry now says so, and release checks include chart text. (L8)
+
+### Added
+- 15 more regression tests (37 in all), one or more per fixed issue, and the example file `tests/data/l2_dashboard_export.xlsx`.
+
+### Upgrade note
+- Reboot the app on Streamlit Community Cloud after deploying (Manage app, three dots, Reboot app): `profile_loader.py`, `export_utils.py`, `chart_builder.py` and `models.py` changed.
+
 ## [1.6.5] - 2026-10-13
 
 Reliable file import: fixes the five high-severity issues from the 12 October audit, plus M1 and M8. Commit [`c0b6a55`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/c0b6a55).
@@ -44,7 +72,7 @@ Dark mode fixes and Excel export. Commit [`7c02c22`](https://github.com/IamRepos
 - Unreadable text in dark mode: "Reset data window", "Remove selected profile" and the download button had near-white text on white, and help tooltips had the same problem.
 - "Import uploaded files" now has white text on blue in light mode too; it was dark text on blue.
 - Dropdown lists, uploaded-file chips, the uploader's add icon, dropdown arrows and the small heading above the title now follow the dark theme.
-- Checked with an automated contrast audit of every visible text element in light and dark mode, on Streamlit 1.60 and 1.65: none is below 3:1.
+- Checked with an automated contrast audit of every visible text element on the page, in light and dark mode, on Streamlit 1.60 and 1.65: none is below 3:1. Correction (1.6.6): the audit did not cover text inside charts; the chart titles were 1.4:1 in dark mode until 1.6.6.
 
 ### Changed
 - The data download is now one Excel sheet instead of a ZIP of CSV files: Timestamp (dd/mm/yyyy hh:mm), then one "<profile name> (°C)" column per visible profile. The button is called "Download Excel file".
@@ -209,6 +237,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.6.6]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/c0b6a55...COMMIT
 [1.6.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/49fbe62...c0b6a55
 [1.6.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/b9ade35...1665b1a
 [1.6.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/7fd6ede...7c02c22

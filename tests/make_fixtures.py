@@ -60,6 +60,12 @@ def main():
         pd.DataFrame({'Timestamp': pd.date_range('2026-10-03 10:00', periods=5, freq='min'), 'Meat': [20, 21, 22, 23, 24]}).to_excel(writer, sheet_name='Cook 1', index=False)
         pd.DataFrame({'Timestamp': pd.date_range('2026-10-04 10:00', periods=5, freq='min'), 'Meat': [30, 31, 32, 33, 34]}).to_excel(writer, sheet_name='Cook 2', index=False)
 
+    # L2: the dashboard's own Excel export, imported again (one sheet, "(°C)" in the column names)
+    with pd.ExcelWriter(DATA / 'l2_dashboard_export.xlsx', engine='openpyxl') as writer:
+        pd.DataFrame({'Timestamp': pd.date_range('2026-10-03 15:34', periods=5, freq='min'),
+                      'Connet - Probe 1 (°C)': [23.5, 30.1, 40.2, 50.3, 60.4],
+                      'Smoque_XL - Probe 2 (°C)': [18.7, 19.0, 19.5, 20.1, 20.8]}).to_excel(writer, sheet_name='Cook profiles', index=False)
+
     # H2 guard: Excel date serial numbers under a Date header are clock times, not elapsed values
     serial = [46298 + (10 * 60 + m) / 1440 for m in range(0, 5)]  # 3 October 2026, 10:00 to 10:04
     with pd.ExcelWriter(DATA / 'ok_excel_serial_dates.xlsx', engine='openpyxl') as writer:

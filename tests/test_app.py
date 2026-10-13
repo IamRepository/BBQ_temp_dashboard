@@ -99,5 +99,48 @@ class MainInteractions(unittest.TestCase):
         self.assertIn('TIME WITHIN BAND', labels)
 
 
+class V166Interactions(unittest.TestCase):
+    def setUp(self):
+        self.profiles, _ = load_uploaded_files([Upload(DATA / 'ok_device_cest.csv'), Upload(DATA / 'h5_fixed_setpoint.csv')])
+        self.at = page(self.profiles)
+
+    def test_charts_use_the_dashboard_colours_not_streamlits_chart_theme(self):   # M4
+        charts = self.at.get('plotly_chart')
+        self.assertTrue(charts)
+        self.assertTrue(all(c.proto.theme == '' for c in charts), [c.proto.theme for c in charts])
+
+    def test_time_offset_in_minutes(self):   # M5
+        selected = self.at.session_state['selected_profile_id']
+        box = next(n for n in self.at.number_input if n.key == f'edit_{selected}_offset_min')
+        box.set_value(3.5).run()
+        self.assertEqual(problems(self.at), [])
+        profile = next(p for p in self.at.session_state['profiles'] if p.profile_id == selected)
+        self.assertAlmostEqual(profile.offset_hours, 3.5 / 60)
+        self.assertTrue(any('+0:03:30' in c.value for c in self.at.caption), [c.value for c in self.at.caption])
+
+    def test_rename_warning_clears_on_another_profile(self):   # L1
+        names = [p.name for p in self.profiles]
+        next(t for t in self.at.text_input if t.key and t.key.endswith('_name')).set_value(names[1]).run()
+        self.assertIn('Profile names must be unique.', [w.value for w in self.at.warning])
+        self.at.selectbox(key='selected_profile_id').set_value(self.profiles[2].profile_id).run()
+        self.assertNotIn('Profile names must be unique.', [w.value for w in self.at.warning])
+
+    def test_devices_card(self):   # L5
+        labels = {m.label: m.value for m in self.at.metric}
+        self.assertNotIn('CHANNELS', labels)
+        self.assertEqual(labels.get('DEVICES'), '2')
+
+    def test_clock_alignment_names_profiles_without_clock_times(self):   # L9
+        elapsed, _ = load_uploaded_files([Upload(DATA / 'h2_elapsed_hours.csv')])
+        at = AppTest.from_file(APP, default_timeout=120)
+        at.session_state['profiles'] = self.profiles + elapsed
+        at.session_state['alignment_selector'] = 'Clock'
+        at.run()
+        self.assertEqual(problems(at), [])
+        notes = ' '.join(c.value for c in at.caption)
+        self.assertIn('not shown in Clock alignment', notes)
+        self.assertIn(elapsed[0].name, notes)
+
+
 if __name__ == '__main__':
     unittest.main()

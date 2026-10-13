@@ -4,6 +4,7 @@ import io
 import pandas as pd
 
 EXPORT_INTERVALS = {'As logged': None, '10 s': '10s', '30 s': '30s', '1 min': '1min', '5 min': '5min'}
+CLOCK_SHEET, ELAPSED_SHEET = 'Cook profiles', 'Elapsed time'
 
 
 def _column_names(profiles):
@@ -15,13 +16,9 @@ def _column_names(profiles):
     return names
 
 
-def export_table(profiles, interval='1 min'):
+def _table(profiles, interval, use_clock):
     """Wide table of the visible data window (trim) with time offsets applied. Smoothing is never applied.
-
-    With clock times on every profile the first column is 'Timestamp'; otherwise 'Elapsed time (h)'.
-    For an interval, readings are averaged within each interval. Temperatures are rounded to 0.1 °C.
-    """
-    use_clock = bool(profiles) and all('timestamp' in p.plotted_data for p in profiles)
+    For an interval, readings are averaged within each interval. Temperatures are rounded to 0.1 °C."""
     time_col = 'Timestamp' if use_clock else 'Elapsed time (h)'
     freq = EXPORT_INTERVALS.get(interval)
     series = []
@@ -46,25 +43,43 @@ def export_table(profiles, interval='1 min'):
     return table
 
 
+def export_sheets(profiles, interval='1 min'):
+    """[(sheet name, table)]: profiles with clock times on 'Cook profiles' (by time of day), profiles with
+    only elapsed time on 'Elapsed time' (by hours since their start), so devices that share a clock stay aligned."""
+    clock = [p for p in profiles if 'timestamp' in p.data]
+    elapsed = [p for p in profiles if 'timestamp' not in p.data]
+    sheets = []
+    if clock:
+        sheets.append((CLOCK_SHEET, _table(clock, interval, True)))
+    if elapsed:
+        sheets.append((ELAPSED_SHEET, _table(elapsed, interval, False)))
+    return sheets or [(CLOCK_SHEET, pd.DataFrame(columns=['Timestamp']))]
+
+
+def export_table(profiles, interval='1 min'):
+    """The first sheet's table (kept for callers that need a single table)."""
+    return export_sheets(profiles, interval)[0][1]
+
+
 def profiles_to_excel(profiles, interval='1 min'):
-    """The export table as an .xlsx file: real dates, readable column widths, frozen header row."""
-    table = export_table(profiles, interval)
+    """The export as an .xlsx file: real dates, readable column widths, frozen header row."""
     buffer = io.BytesIO()
+    time_format = 'dd/mm/yyyy hh:mm' if EXPORT_INTERVALS.get(interval) in ('1min', '5min') else 'dd/mm/yyyy hh:mm:ss'
     with pd.ExcelWriter(buffer, engine='openpyxl') as writer:
-        table.to_excel(writer, index=False, sheet_name='Cook profiles')
-        sheet = writer.sheets['Cook profiles']
-        sheet.freeze_panes = 'A2'
-        time_format = 'dd/mm/yyyy hh:mm' if EXPORT_INTERVALS.get(interval) in ('1min', '5min') else 'dd/mm/yyyy hh:mm:ss'
-        for index, column in enumerate(table.columns, start=1):
-            letter = sheet.cell(row=1, column=index).column_letter
-            if index == 1 and column == 'Timestamp':
-                sheet.column_dimensions[letter].width = 20
-                for cell in sheet[letter][1:]:
-                    cell.number_format = time_format
-            else:
-                sheet.column_dimensions[letter].width = max(12, len(str(column)) + 3)
-                for cell in sheet[letter][1:]:
-                    cell.number_format = '0.0' if index > 1 else '0.0000'
+        for name, table in export_sheets(profiles, interval):
+            table.to_excel(writer, index=False, sheet_name=name)
+            sheet = writer.sheets[name]
+            sheet.freeze_panes = 'A2'
+            for index, column in enumerate(table.columns, start=1):
+                letter = sheet.cell(row=1, column=index).column_letter
+                if index == 1 and column == 'Timestamp':
+                    sheet.column_dimensions[letter].width = 20
+                    for cell in sheet[letter][1:]:
+                        cell.number_format = time_format
+                else:
+                    sheet.column_dimensions[letter].width = max(12, len(str(column)) + 3)
+                    for cell in sheet[letter][1:]:
+                        cell.number_format = '0.0' if index > 1 else '0.0000'
     return buffer.getvalue()
 
 
