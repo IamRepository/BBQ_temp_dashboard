@@ -4,7 +4,7 @@ All releases of the Cook Profile Dashboard, newest first. Dates are when each re
 
 ## [1.6.7] - 2026-10-13
 
-Speed and upkeep: fixes M6, M7, L6 and L7, the last open issues from the 12 October audit, and adds trimming of all profiles at once. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+Speed and upkeep: fixes M6, M7, L6 and L7, the last open issues from the 12 October audit, and adds trimming of all profiles at once. Commit [`4798881`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/4798881).
 
 ### Added
 - **Trim all profiles together**, a tick box under Visible data window. When ticked, one slider sets the same time window for every loaded profile instead of trimming them one by one. It uses clock time, with each profile's time offset, when every profile has clock times. Otherwise it uses hours from each profile's start, as on the Start timeline. The slider starts at the window that covers all current trims, so ticking the box changes nothing until you move it.
@@ -267,7 +267,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
-[1.6.7]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/5bd1ab2...COMMIT
+[1.6.7]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/5bd1ab2...4798881
 [1.6.6]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/c0b6a55...5bd1ab2
 [1.6.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/49fbe62...c0b6a55
 [1.6.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/b9ade35...1665b1a
