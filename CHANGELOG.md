@@ -2,6 +2,29 @@
 
 All releases of the Cook Profile Dashboard, newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.6.9] - 2026-10-13
+
+Compact Profile details on the same screen as the chart. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Changed
+- **Profile details and the comparison chart share one card.** On a 1440 × 900 or 1920 × 1080 screen, the controls, the whole chart and the export row fit on one screen, so a change to a profile is seen at once.
+- **Profile details is about 60% shorter** (258 instead of about 620 pixels), in two rows:
+  - Row 1: Profile, Display name, Channel label, Time offset (min), Color and Setpoint (dashed line).
+  - Row 2: Trim all profiles together, the trim slider, Reset and Remove profile.
+- **One status line under the trim slider.** It shows the profile's full name, its file, the samples shown, the trim window (or the points hidden left and right), and the time offset as h:mm:ss when it is not zero. It replaces the separate sample, offset and window lines. Because the full name is in this line, a long name cut off in the Profile box can still be read; this replaces the separate full-name line from 1.6.7 and 1.6.8.
+- **Chart heading.** The card heading "Temperature profile comparison" and its note are gone. The chart title "Temperature profiles" now has the summary as a subtitle, for example "4 profiles | 2 devices | 1.3 - 1.5 h duration range". The subtitle is also in saved chart images.
+- **Excel export under the chart.** Export interval and Download Excel file moved from Profile details to below the chart. The section label "Export visible profiles" is gone; the Export interval help says that the visible profiles are exported.
+- Shorter labels to fit the rows:
+  - "Line color" is now "Color".
+  - "Reset data window" is now "Reset", and "Reset all data windows" is now "Reset all".
+  - Each reset button has a help tip saying what it resets.
+
+### Added
+- 3 more regression tests (56 in all): the chart subtitle, the order of controls, chart and export in the card, and the status line with file, samples and offset.
+
+### Upgrade note
+- Reboot the app on Streamlit Community Cloud after deploying (Manage app, three dots, Reboot app): `chart_builder.py` changed.
+
 ## [1.6.8] - 2026-10-13
 
 Layout: Profile details above the chart, and 16:9 charts. Commit [`d6654f9`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/d6654f9).
@@ -291,6 +314,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.6.9]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d6654f9...COMMIT
 [1.6.8]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/4798881...d6654f9
 [1.6.7]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/5bd1ab2...4798881
 [1.6.6]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/c0b6a55...5bd1ab2
