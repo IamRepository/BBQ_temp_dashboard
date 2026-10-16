@@ -213,8 +213,21 @@ def _temperature_columns(df,timecol):
         keep.append((c,name,n,note))
     return keep,skipped
 
+START_SOURCE=re.compile(r'^start\s*time\s*(source|set|set\s*by)$',re.I)
+
+def _start_source(df):
+    """BBQ Chart to Data writes how each probe's start time was set ("read and confirmed" from a start
+    screenshot, or "typed") into a text column "Start time source". Returns (value or '', df without it)."""
+    for c in df.columns:
+        if START_SOURCE.match(str(c).strip()):
+            values=df[c].dropna().astype(str).str.strip()
+            values=values[values!='']
+            return (values.mode().iloc[0] if len(values) else ''), df.drop(columns=[c])
+    return '', df
+
 def dataframe_to_profiles(df,source,sheet=None,color_start=0):
     df=df.rename(columns=lambda c: str(c).strip()).dropna(how='all').dropna(axis=1,how='all')
+    start_source,df=_start_source(df)
     elapsed,timestamp,timecol,clock_note=_time(df)
     columns,skipped=_temperature_columns(df,timecol)
     profiles=[]; notes=[]
@@ -224,11 +237,16 @@ def dataframe_to_profiles(df,source,sheet=None,color_start=0):
         out=out.dropna(subset=['elapsed_hours','temperature_c']).sort_values('elapsed_hours').drop_duplicates('elapsed_hours',keep='last')
         if len(out)<2: continue
         base=Path(source).stem; full=f'{base} - {sheet} - {name}' if sheet else f'{base} - {name}'
-        profiles.append(CookProfile(uuid.uuid4().hex,full,source,name,COLORS[(color_start+i)%len(COLORS)],out.reset_index(drop=True),metadata={'sheet':sheet or '', 'time_column':timecol}))
+        profiles.append(CookProfile(uuid.uuid4().hex,full,source,name,COLORS[(color_start+i)%len(COLORS)],out.reset_index(drop=True),
+                                    metadata={'sheet':sheet or '', 'time_column':timecol, 'start_source':start_source}))
         if note: notes.append(note)
     where=f'{source} ({sheet})' if sheet else source
     message=f"{where}: detected '{timecol}' and created {len(profiles)} profile(s)."
     if clock_note: message+=' Note: '+clock_note
+    if start_source and 'typed' in start_source.lower():
+        message+=' Start time typed in Chart to Data, not read from a start screenshot: check it.'
+    elif start_source:
+        message+=f' Start time: {start_source}.'
     for note in notes: message+=' '+note
     if skipped: message+=' Skipped: '+'; '.join(f'"{c}" ({why})' for c,why in skipped)+'.'
     return profiles,message

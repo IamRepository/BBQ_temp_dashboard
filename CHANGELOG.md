@@ -2,6 +2,43 @@
 
 All releases of the Cook Profile Dashboard, newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.7.0] - 2026-10-16
+
+Roles for multi-device cooks (Typhur + Weber), as agreed on 16 October 2026. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Added
+- **Check the import.** After "Import uploaded files", a card lists every temperature column found. Nothing is added until "Add" is clicked; "Cancel" adds nothing. Each column has:
+  - an Import tick, to leave a column out;
+  - a Probe label: which probe or device it comes from, for example "Typhur probe 2", or "Smoque_XL Probe 1" when a file has numbered probes;
+  - a Role.
+  A line under the list shows the names the profiles will get.
+- **Roles:** Meat, Point, Flat, Grate, Pit, Hold, Setpoint and Other. The suggestion comes from the column name:
+  - Typhur "Ambient temperature" becomes Grate, and "Meat temperature" becomes Meat (choose Point or Flat for a brisket).
+  - The Weber "cavity temperature" becomes Pit.
+  - "Setpoint", "Target" and "Set temperature" become Setpoint.
+- **Names "<probe> - <role>",** for example "Typhur probe 2 - Grate", made unique when needed.
+- **Colour by probe, line style by role.** All lines of one probe share a colour: four Typhur probes plus a Weber with two probes are 7 colours for 11 lines, within the 8 validated colours.
+  - Meat, Point and Flat are solid, Grate dash-dot, Pit long dash, Hold long dash-dot, and a Setpoint dashed as before.
+  - With more than four lines the legend moves to the right of the chart, so it no longer runs into the title.
+- **Role in Profile details,** in place of the "Setpoint (dashed line)" tick box.
+  - Choosing Setpoint makes the profile a setpoint: drawn dashed and available under Setpoint vs measured.
+  - A name still in the "<probe> - <role>" form follows a role change.
+- **Excel export names the Brisket Tenderness Analyzer reads correctly.** The Analyzer picks a role from words in each column name, in a fixed order, so some names misled it. The export now adjusts a name only when needed:
+  - A meat probe on the Smoque XL lost the role to the controller rule ("smoque"); it is now exported as "XL Probe 1 - Meat".
+  - A Pit name without a controller word gets "(PID)".
+  - A setpoint is written as "Set temperature", because "Setpoint" contains "point" and was taken for the brisket point.
+  - On screen the names are unchanged. A test checks every probe and role against a copy of the Analyzer's rules (v2.8.3).
+- **Typed start times from BBQ Chart to Data.** A text column "Start time source" is read, not imported as a temperature.
+  - When it says "typed", Import notes says so and the profile's status line adds "start time typed in Chart to Data, check it".
+  - This follows the format proposed for Chart to Data's next update: a "Start time source" column with "read and confirmed" or "typed".
+- 14 more regression tests (73 in all): role and probe suggestions, every export name against the Analyzer's rules, colours by probe, line styles, the Chart to Data files with a typed start (two new example files), re-importing the merged export with the same roles, and the import review (defaults, changed choices, Cancel, role change).
+
+### Changed
+- Profiles loaded before 1.7.0 get a role and probe from their column and file names. Their line style can change, for example the Weber cavity line becomes long-dashed (role Pit).
+
+### Upgrade note
+- Reboot the app on Streamlit Community Cloud after deploying (Manage app, three dots, Reboot app): several files changed and `roles.py` is new.
+
 ## [1.6.10] - 2026-10-16
 
 Target line and new defaults. Commit [`aaecc53`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/aaecc53).
@@ -335,6 +372,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.7.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/aaecc53...COMMIT
 [1.6.10]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/6f20a3d...aaecc53
 [1.6.9]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d6654f9...6f20a3d
 [1.6.8]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/4798881...d6654f9

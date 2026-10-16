@@ -207,7 +207,7 @@ class V168Layout(unittest.TestCase):
         source = (Path(__file__).resolve().parent.parent / 'app.py').read_text()
         self.assertLess(source.index("key='profile_details_card'"), source.index("key='chart_comparison'"))
         self.assertNotIn('main, side = st.columns', source)
-        self.assertEqual(self.at.checkbox(key=f"edit_{self.at.session_state['selected_profile_id']}_setpoint").label, 'Setpoint (dashed line)')
+        self.assertEqual(self.at.selectbox(key=f"edit_{self.at.session_state['selected_profile_id']}_role").label, 'Role')   # replaced the setpoint tick in v1.7.0
 
 
 class V169CompactLayout(unittest.TestCase):
@@ -266,3 +266,83 @@ class V1610DefaultsAndTarget(unittest.TestCase):
             shape = figure['layout']['shapes'][0]
             self.assertEqual((shape['y0'], shape['y1'], shape['line']['dash']), (185, 185, 'dot'))
             self.assertIn('Target 185 °C', [a['text'] for a in figure['layout']['annotations']])
+
+
+class V170ImportReview(unittest.TestCase):
+    """The column picker: nothing is added until the user confirms columns, roles and probes."""
+
+    def setUp(self):
+        self.new, self.messages = load_uploaded_files([Upload(DATA / 'c2d_typhur_probe_1.csv'), Upload(DATA / 'c2d_typhur_probe_2.csv'),
+                                                       Upload(DATA / 'ok_device_cest.csv')])
+        self.at = AppTest.from_file(APP, default_timeout=120)
+        self.at.session_state['profiles'] = []
+        self.at.session_state['pending_import'] = {'profiles': self.new, 'messages': self.messages, 'keep': True, 'batch': 'test'}
+        self.at.run()
+
+    def test_review_card_lists_every_column_with_defaults(self):
+        at = self.at
+        self.assertEqual(problems(at), [])
+        self.assertTrue(any('Check the import' in m.value for m in at.markdown))
+        self.assertEqual(at.session_state['profiles'], [])                       # nothing added yet
+        self.assertEqual(len([c for c in at.checkbox if c.key and c.key.startswith('imp_test_')]), 7)
+        self.assertEqual(at.selectbox(key='imp_test_0_role').value, 'Grate')
+        self.assertEqual(at.text_input(key='imp_test_5_probe').value, 'ok_device_cest Probe 1')
+        preview = next(c.value for c in at.caption if c.value.startswith('Will be added as'))
+        for name in ('c2d_typhur_probe_1 - Grate', 'c2d_typhur_probe_1 - Meat', 'c2d_typhur_probe_2 - Grate', 'ok_device_cest - Pit',
+                     'ok_device_cest Probe 1 - Meat', 'ok_device_cest Probe 2 - Meat'):
+            self.assertIn(name, preview)
+
+    def test_add_gives_roles_names_colours_and_line_styles(self):
+        import json
+        at = self.at
+        at.button(key='apply_import').click().run()
+        self.assertEqual(problems(at), [])
+        profiles = at.session_state['profiles']
+        self.assertNotIn('pending_import', at.session_state)
+        self.assertEqual(len(profiles), 7)
+        by_name = {p.name: p for p in profiles}
+        self.assertEqual(by_name['c2d_typhur_probe_1 - Grate'].color, by_name['c2d_typhur_probe_1 - Meat'].color)   # one probe, one colour
+        self.assertEqual(len({p.color for p in profiles}), 5)                                                     # 5 probes
+        self.assertTrue(by_name['ok_device_cest - Pit'].role == 'Pit' and not by_name['ok_device_cest - Pit'].is_setpoint)
+        traces = {t['name']: t.get('line', {}).get('dash') for t in json.loads(at.get('plotly_chart')[0].proto.spec)['data']}
+        self.assertEqual(traces['c2d_typhur_probe_1 - Grate'], 'dashdot')
+        self.assertEqual(traces['ok_device_cest - Pit'], 'longdash')
+        self.assertIsNone(traces['c2d_typhur_probe_1 - Meat'])
+
+    def test_choices_are_applied(self):
+        at = self.at
+        at.checkbox(key='imp_test_0_use').uncheck()                    # leave out probe 1 ambient
+        at.selectbox(key='imp_test_1_role').set_value('Point')
+        at.text_input(key='imp_test_1_probe').set_value('Typhur 1').run()
+        self.assertIn('Typhur 1 - Point', next(c.value for c in at.caption if c.value.startswith('Will be added as')))
+        at.button(key='apply_import').click().run()
+        names = [p.name for p in at.session_state['profiles']]
+        self.assertEqual(len(names), 6)
+        self.assertIn('Typhur 1 - Point', names)
+        self.assertNotIn('c2d_typhur_probe_1 - Grate', names)
+        self.assertTrue(any('1 column(s) left out' in m for m in at.session_state['import_messages']))
+
+    def test_cancel_adds_nothing(self):
+        at = self.at
+        at.button(key='cancel_import').click().run()
+        self.assertEqual(at.session_state['profiles'], [])
+        self.assertNotIn('pending_import', at.session_state)
+        self.assertTrue(any('to begin' in i.value for i in at.info))
+
+    def test_typed_start_flagged_in_the_status_line(self):
+        at = self.at
+        at.button(key='apply_import').click().run()
+        typed = next(p for p in at.session_state['profiles'] if p.metadata.get('start_source') == 'typed')
+        at.selectbox(key='selected_profile_id').set_value(typed.profile_id).run()
+        self.assertTrue(any('start time typed in Chart to Data, check it' in c.value for c in at.caption))
+
+    def test_role_change_renames_and_sets_the_setpoint(self):
+        at = self.at
+        at.button(key='apply_import').click().run()
+        pit = next(p for p in at.session_state['profiles'] if p.role == 'Pit')
+        at.selectbox(key='selected_profile_id').set_value(pit.profile_id).run()
+        at.selectbox(key=f'edit_{pit.profile_id}_role').set_value('Setpoint').run()
+        self.assertEqual(problems(at), [])
+        pit = next(p for p in at.session_state['profiles'] if p.profile_id == pit.profile_id)
+        self.assertEqual((pit.name, pit.is_setpoint), ('ok_device_cest - Setpoint', True))
+        self.assertFalse(any('Set the Role of a profile to "Setpoint"' in i.value for i in at.info))   # comparison now available

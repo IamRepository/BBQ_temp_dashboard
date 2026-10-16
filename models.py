@@ -17,6 +17,8 @@ class CookProfile:
     trim_start: int = 0
     trim_end: int | None = None
     is_setpoint: bool = False  # a target the cooker was set to hold, drawn dashed and never smoothed
+    role: str = ''             # Meat, Point, Flat, Grate, Pit, Hold, Setpoint or Other (roles.py); '' before v1.7.0
+    probe: str = ''            # the probe or device it comes from; profiles of one probe share a colour
 
     def trim_bounds(self):
         count = len(self.data)

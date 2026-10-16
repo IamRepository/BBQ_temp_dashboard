@@ -1,8 +1,12 @@
 import datetime as dt
+import html
 
 import pandas as pd
 import streamlit as st
-from profile_loader import load_uploaded_files
+import uuid
+
+from profile_loader import COLORS, load_uploaded_files
+from roles import ROLES, ROLE_HELP, default_probe, default_role, probe_colours, profile_name, unique_names
 from chart_builder import comparison, single, deviation, without_clock
 from analysis import compare
 from export_utils import EXPORT_INTERVALS, export_filename, profiles_to_excel
@@ -14,6 +18,12 @@ st.set_page_config(page_title='Cook Profile Dashboard', page_icon='CP', layout='
 if 'profiles' not in st.session_state:
     st.session_state.profiles = []
 P = st.session_state.profiles
+for _p in P:   # profiles from before v1.7.0 (or made in tests) get a role and a probe label
+    if not _p.role:
+        role = default_role(_p.channel)
+        _p.role = 'Setpoint' if _p.is_setpoint else ('Other' if role == 'Setpoint' else role)
+    if not _p.probe:
+        _p.probe = default_probe(_p.source_file, _p.channel, _p.metadata.get('sheet', ''))
 
 
 def reset_trim(profile, widget_key):
@@ -66,6 +76,53 @@ def reset_all_trims(widget_key, low, high):
     st.session_state.group_trim_note = []
 
 
+def apply_import():
+    # "Add" in Check the import: keep the ticked columns with their role and probe label.
+    pending = st.session_state.pop('pending_import', None)
+    if not pending:
+        return
+    batch = pending['batch']
+    existing = st.session_state.profiles if pending['keep'] else []
+    chosen = []
+    for i, profile in enumerate(pending['profiles']):
+        if not st.session_state.get(f'imp_{batch}_{i}_use', True):
+            continue
+        role = st.session_state.get(f'imp_{batch}_{i}_role')
+        profile.role = role if role in ROLES else default_role(profile.channel)
+        probe = str(st.session_state.get(f'imp_{batch}_{i}_probe') or '').strip()
+        profile.probe = probe or default_probe(profile.source_file, profile.channel, profile.metadata.get('sheet', ''))
+        profile.is_setpoint = profile.role == 'Setpoint'
+        chosen.append(profile)
+    names = unique_names([profile_name(p.probe, p.role) for p in chosen], taken={p.name for p in existing})
+    colours = probe_colours([p.probe for p in chosen], [(p.probe, p.color) for p in existing], COLORS)
+    for profile, name in zip(chosen, names):
+        profile.name, profile.color = name, colours[profile.probe]
+    left_out = len(pending['profiles']) - len(chosen)
+    st.session_state.profiles = existing + chosen
+    shown = st.session_state.get('visible_profile_ids', []) if pending['keep'] else []
+    st.session_state.visible_profile_ids = shown + [p.profile_id for p in chosen]
+    st.session_state.import_messages = pending['messages'] + [f'Imported {len(chosen)} profile(s)' + (f'; {left_out} column(s) left out.' if left_out else '.')]
+    if not pending['keep']:
+        st.session_state.selected_profile_id = None
+
+
+def cancel_import():
+    st.session_state.pop('pending_import', None)
+
+
+def change_role(profile_id, widget_key, name_key):
+    # A new role changes the line style and the setpoint flag; a name still in the default form follows it.
+    profile = next((p for p in st.session_state.profiles if p.profile_id == profile_id), None)
+    if profile is None:
+        return
+    old, new = profile.role, st.session_state[widget_key]
+    profile.role, profile.is_setpoint = new, new == 'Setpoint'
+    if profile.name == profile_name(profile.probe, old):
+        candidate = unique_names([profile_name(profile.probe, new)], taken={p.name for p in st.session_state.profiles if p is not profile})[0]
+        profile.name = candidate
+        st.session_state[name_key] = candidate
+
+
 def remove_profile(profile_id):
     remaining = [p for p in st.session_state.profiles if p.profile_id != profile_id]
     st.session_state.profiles = remaining
@@ -108,11 +165,9 @@ with st.sidebar:
     keep = st.checkbox('Keep existing profiles', True, key='keep_existing_profiles')
     if st.button('Import uploaded files', type='primary', width='stretch', disabled=not files, key='import_profiles_button'):
         try:
+            # Read the files, then let the user check columns, roles and probes before anything is added.
             new, messages = load_uploaded_files(files, existing=P if keep else [])
-            st.session_state.profiles = (P + new) if keep else new
-            previously_shown = st.session_state.get('visible_profile_ids', []) if keep else []
-            st.session_state.visible_profile_ids = previously_shown + [p.profile_id for p in new]
-            st.session_state.import_messages = messages + [f'Imported {len(new)} profile(s).']
+            st.session_state.pending_import = {'profiles': new, 'messages': messages, 'keep': keep, 'batch': uuid.uuid4().hex[:8]}
             st.rerun()
         except Exception as exc:
             st.error(f'Import failed: {exc}')
@@ -256,6 +311,10 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 .card-title {{font-size:1.15rem;font-weight:700;color:var(--text)}}
 .card-note {{font-size:.82rem;color:var(--muted);margin-top:.15rem}}
 .card-title.compact {{font-size:1rem;margin-bottom:-.35rem}}
+.import-head {{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:-.6rem}}
+.import-column {{font-size:.9rem;color:var(--text);line-height:1.25}}
+.import-column span {{color:var(--muted);margin-right:.35rem}}
+.st-key-import_review_card [data-testid="stVerticalBlock"] {{gap:.45rem;}}
 /* The comparison and single-profile charts keep a 16:9 shape at any window width */
 .st-key-chart_comparison [data-testid="stElementContainer"],.st-key-chart_comparison [data-testid="stFullScreenFrame"],
 .st-key-chart_single [data-testid="stElementContainer"],.st-key-chart_single [data-testid="stFullScreenFrame"] {{height:auto!important;flex:0 0 auto!important;}}
@@ -316,8 +375,45 @@ hr {{border-color:var(--border)!important;}}
 settings = {'alignment': alignment, 'theme': theme, 'grid': grid, 'legend': legend, 'width': width, 'smoothing_minutes': smoothing_minutes, 'target': target}
 st.markdown(f'<div class="page-kicker">Cook profile studio</div><div class="page-title">Cook Profile Dashboard</div><div class="page-version">Version {VERSION}</div><div class="page-note">Compare uploaded temperature profiles in a clean, consistent workspace. All temperatures are in degrees Celsius.</div>', unsafe_allow_html=True)
 
+pending = st.session_state.get('pending_import')
+if pending:
+    with st.container(border=True, key='import_review_card'):
+        st.markdown('<div class="card-title">Check the import</div><div class="card-note">Choose which columns to add, what each one measures and which probe it comes from. '
+                    'Profiles of one probe share a colour; the role sets the line style.</div>', unsafe_allow_html=True)
+        new_profiles = pending['profiles']
+        if not new_profiles:
+            st.warning('No new temperature columns were found. Import notes in the sidebar say why.')
+            st.button('Close', key='cancel_import', on_click=cancel_import)
+        else:
+            batch = pending['batch']
+            widths = [0.55, 2.7, 1.9, 1.3]
+            head = st.columns(widths, gap='small')
+            for column, text, tip in zip(head, ['Import', 'File and column', 'Probe', 'Role'],
+                                         ['Untick to leave a column out.', '', 'Which probe or device the column comes from. Columns with the same probe share a colour, for example "Typhur 2".',
+                                          'What the column measures. Sets the line style and the name in the Excel export.']):
+                column.markdown(f'<div class="import-head" title="{tip}">{text}</div>', unsafe_allow_html=True)
+            for i, p in enumerate(new_profiles):
+                c1, c2, c3, c4 = st.columns(widths, gap='small', vertical_alignment='center')
+                use_key, probe_key, role_key = f'imp_{batch}_{i}_use', f'imp_{batch}_{i}_probe', f'imp_{batch}_{i}_role'
+                c1.checkbox('Import', True, key=use_key, label_visibility='collapsed')
+                sheet = f" ({p.metadata.get('sheet')})" if p.metadata.get('sheet') else ''
+                c2.markdown(f'<div class="import-column"><span>{html.escape(p.source_file + sheet)}</span> {html.escape(p.channel)}</div>', unsafe_allow_html=True)
+                c3.text_input('Probe', default_probe(p.source_file, p.channel, p.metadata.get('sheet', '')), key=probe_key, label_visibility='collapsed')
+                role = default_role(p.channel)
+                c4.selectbox('Role', ROLES, index=ROLES.index(role), key=role_key, label_visibility='collapsed')
+            chosen = [i for i in range(len(new_profiles)) if st.session_state.get(f'imp_{batch}_{i}_use', True)]
+            taken = {p.name for p in P} if pending['keep'] else set()
+            names = unique_names([profile_name(str(st.session_state.get(f'imp_{batch}_{i}_probe', '')).strip() or 'Probe',
+                                               st.session_state.get(f'imp_{batch}_{i}_role', 'Other')) for i in chosen], taken=taken)
+            st.caption('Will be added as: ' + (', '.join(names) if names else 'nothing, every column is unticked'))
+            b1, b2, _ = st.columns([1.3, 0.8, 4.0], gap='small')
+            b1.button(f'Add {len(names)} profile(s)', type='primary', width='stretch', key='apply_import', on_click=apply_import, disabled=not names)
+            b2.button('Cancel', width='stretch', key='cancel_import', on_click=cancel_import)
+    st.write('')
+
 if not P:
-    st.info('Upload one or more CSV or Excel files from the sidebar to begin.')
+    if not pending:
+        st.info('Upload one or more CSV or Excel files from the sidebar to begin.')
     st.stop()
 
 profile_by_id = {p.profile_id: p for p in P}
@@ -366,8 +462,12 @@ with st.container(border=True, key='profile_details_card'):
     with d5:
         color = st.color_picker('Color', selected.color, key=f'{edit_key}_color')
     with d6:
-        selected.is_setpoint = st.checkbox('Setpoint (dashed line)', selected.is_setpoint, key=f'{edit_key}_setpoint',
-                                           help='Tick for a temperature the cooker was set to hold. It is drawn as a dashed line, never smoothed, and can be compared with a measured probe under Setpoint vs measured.')
+        role_key = f'{edit_key}_role'
+        if st.session_state.get(role_key) != selected.role:
+            st.session_state[role_key] = selected.role
+        st.selectbox('Role', ROLES, key=role_key, on_change=change_role, args=(selected.profile_id, role_key, name_key),
+                     help='What this profile measures. Sets the line style (solid for meat, dash-dot for grate, long dash for pit, dashed for a setpoint) '
+                          'and the name in the Excel export. Setpoint: drawn dashed, never smoothed, and compared with a probe under Setpoint vs measured.')
     selected.channel, selected.offset_hours, selected.color = channel, offset, color
     if st.session_state.get('rename_error'):
         st.warning(st.session_state.rename_error)
@@ -423,6 +523,8 @@ with st.container(border=True, key='profile_details_card'):
     status = [selected.name, selected.source_file, f'{len(selected.plotted_data):,} of {total_points:,} samples shown', window_note]
     if offset:
         status.append(f'offset {offset_readout(offset)} (h:mm:ss)')
+    if 'typed' in str(selected.metadata.get('start_source', '')).lower():
+        status.append('start time typed in Chart to Data, check it')
     st.caption('  |  '.join(s for s in status if s))
     if trim_all and st.session_state.get('group_trim_note'):
         st.caption('No readings inside this window, left as they were: ' + ', '.join(st.session_state.group_trim_note))
@@ -446,7 +548,7 @@ measured_profiles = [p for p in P if not p.is_setpoint]
 with st.container(border=True):
     st.markdown('<div class="card-title">Setpoint vs measured</div><div class="card-note">How closely a probe followed the temperature the cooker was set to hold</div>', unsafe_allow_html=True)
     if not setpoints or not measured_profiles:
-        st.info('Tick "Setpoint (dashed line)" for a profile in Profile details, for example the cooker\'s own temperature setting. It can then be compared with a measured probe here.')
+        st.info('Set the Role of a profile to "Setpoint" in Profile details (or at import), for example the cooker\'s own temperature setting. It can then be compared with a measured probe here.')
     else:
         setpoint_ids = [p.profile_id for p in setpoints]
         probe_ids = [p.profile_id for p in measured_profiles]

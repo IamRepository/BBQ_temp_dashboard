@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from analysis import smooth
+from roles import ROLE_DASH
 
 # Most points drawn per line. A long cook logged every second has tens of thousands of readings, more than a
 # chart can show; drawing all of them made every click slow. Statistics, the setpoint comparison and the Excel
@@ -54,9 +55,11 @@ def _x(profile, mode, y=None):
 
 
 def _line(profile, settings):
+    # Colour follows the probe, line style follows the role (roles.ROLE_DASH); setpoints are always dashed.
     line = {'color': profile.color, 'width': settings['width']}
-    if profile.is_setpoint:
-        line['dash'] = 'dash'
+    dash = 'dash' if profile.is_setpoint else ROLE_DASH.get(getattr(profile, 'role', ''), 'solid')
+    if dash != 'solid':
+        line['dash'] = dash
     return line
 
 
@@ -80,7 +83,11 @@ def _layout(fig, settings, title, height=None, x_title=None, y_title='Temperatur
         font={'color': colors['text'], 'family': 'Inter, Arial, sans-serif'},
         hovermode='x unified',
         showlegend=settings['legend'],
-        legend={'orientation': 'h', 'y': 1.02, 'yanchor': 'bottom', 'x': 0.02, 'font': {'size': 11, 'color': colors['muted']}, 'bgcolor': 'rgba(0,0,0,0)'},
+        # Up to 4 lines: one row above the plot. More (a multi-probe cook): a column to the right, so a long
+        # legend never runs into the title.
+        legend=({'orientation': 'h', 'y': 1.02, 'yanchor': 'bottom', 'x': 0.02} if len(fig.data) <= 4 else
+                {'orientation': 'v', 'y': 1, 'yanchor': 'top', 'x': 1.01, 'xanchor': 'left'})
+               | {'font': {'size': 11, 'color': colors['muted']}, 'bgcolor': 'rgba(0,0,0,0)'},
         hoverlabel={'bgcolor': colors['bg'], 'bordercolor': colors['border'], 'font': {'color': colors['text']}},
         margin={'l': 64, 'r': 30, 't': 122 if subtitle else 86, 'b': 58},
     )

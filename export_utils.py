@@ -3,16 +3,20 @@ import io
 
 import pandas as pd
 
+from roles import export_name
+
 EXPORT_INTERVALS = {'As logged': None, '10 s': '10s', '30 s': '30s', '1 min': '1min', '5 min': '5min'}
 CLOCK_SHEET, ELAPSED_SHEET = 'Cook profiles', 'Elapsed time'
 
 
 def _column_names(profiles):
+    # Names the Brisket Tenderness Analyzer reads with the intended role (roles.export_name), made unique.
     names, used = [], {}
     for p in profiles:
-        name = f'{p.name} (°C)'
+        base = export_name(p.name, getattr(p, 'role', ''))
+        name = f'{base} (°C)'
         used[name] = used.get(name, 0) + 1
-        names.append(name if used[name] == 1 else f'{p.name} {used[name]} (°C)')
+        names.append(name if used[name] == 1 else f'{base} {used[name]} (°C)')
     return names
 
 

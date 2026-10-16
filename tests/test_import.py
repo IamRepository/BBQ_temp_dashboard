@@ -18,6 +18,9 @@ from profile_loader import COLORS, load_uploaded_files  # noqa: E402
 from export_utils import export_sheets, export_table, profiles_to_excel  # noqa: E402
 from chart_builder import MAX_POINTS, comparison, deviation, single, thin  # noqa: E402
 from models import CookProfile  # noqa: E402
+from roles import (ANALYZER_ROLE, ROLES, analyzer_role, default_probe, default_role, export_name,  # noqa: E402
+                   probe_colours, profile_name)
+from chart_builder import _line  # noqa: E402
 import numpy as np  # noqa: E402
 from analysis import compare  # noqa: E402
 
@@ -324,6 +327,81 @@ class M7PinnedVersions(unittest.TestCase):
 class L7NoUnusedFiles(unittest.TestCase):
     def test_example_data_removed(self):
         self.assertFalse((ROOT / 'example_data.py').exists())
+
+
+class V170Roles(unittest.TestCase):
+    """Roles for multi-device cooks, agreed 16 Oct 2026: column picker, roles, colour by probe and
+    line style by role, Analyzer-compatible export names, typed start times flagged."""
+
+    def test_default_roles_from_column_names(self):
+        expected = {'Ambient temperature': 'Grate', 'Meat temperature': 'Meat', 'Internal': 'Meat', 'cavity temperature': 'Pit',
+                    'Probe 1': 'Meat', 'Setpoint': 'Setpoint', 'Set point': 'Setpoint', 'Target': 'Setpoint', 'Pit temp': 'Pit',
+                    'Point': 'Point', 'Flat probe': 'Flat', 'Hold probe': 'Hold', 'Humidity sensor': 'Other'}
+        self.assertEqual({c: default_role(c) for c in expected}, expected)
+
+    def test_probe_labels(self):
+        self.assertEqual(default_probe('Smoque_XL.csv', 'Probe 1'), 'Smoque_XL Probe 1')
+        self.assertEqual(default_probe('Smoque_XL.csv', 'cavity temperature'), 'Smoque_XL')
+        self.assertEqual(default_probe('Typhur probe 2.csv', 'Meat temperature'), 'Typhur probe 2')
+        self.assertEqual(default_probe('cook.xlsx', 'Meat', 'Day 2'), 'cook Day 2')
+
+    def test_every_export_name_gets_the_intended_analyzer_role(self):
+        probes = ['Smoque_XL', 'Smoque_XL Probe 1', 'Typhur probe 2', 'Typhur 1', 'Grill point', 'Flat top', 'Holding cabinet',
+                  'Ambient sensor', 'Weber controller', 'PID', 'Probe']
+        for probe in probes:
+            for role in ROLES:
+                with self.subTest(probe=probe, role=role):
+                    name = export_name(profile_name(probe, role), role)
+                    wanted = ANALYZER_ROLE[role]
+                    if wanted is None:
+                        self.assertNotIn(analyzer_role(name), ('Point', 'Flat'), name)   # never taken for a brisket probe
+                    else:
+                        self.assertEqual(analyzer_role(name), wanted, name)
+                    self.assertTrue(name.strip(' -'), name)
+
+    def test_export_names_change_only_when_needed(self):
+        self.assertEqual(export_name('Typhur 2 - Point', 'Point'), 'Typhur 2 - Point')
+        self.assertEqual(export_name('Smoque_XL Probe 1 - Meat', 'Meat'), 'XL Probe 1 - Meat')
+        self.assertEqual(export_name('Typhur 3 - Pit', 'Pit'), 'Typhur 3 - Pit (PID)')
+        self.assertEqual(export_name('Weber - Setpoint', 'Setpoint'), 'Weber - Set temperature')
+
+    def test_colour_by_probe(self):
+        probes = [f'Typhur {n}' for n in (1, 2, 3, 4) for _ in (0, 1)] + ['Smoque_XL', 'Smoque_XL Probe 1', 'Smoque_XL Probe 2']
+        colours = probe_colours(probes, [], COLORS)
+        self.assertEqual(len(set(colours.values())), 7)          # 7 probes, 11 lines, within the 8 colours
+        again = probe_colours(['Typhur 1', 'New probe'], [('Typhur 1', colours['Typhur 1'])], COLORS)
+        self.assertEqual(again['Typhur 1'], colours['Typhur 1'])
+        self.assertNotEqual(again['New probe'], colours['Typhur 1'])
+
+    def test_line_style_follows_the_role(self):
+        settings = {'width': 3.5}
+        profile = load('c2d_typhur_probe_1.csv')[0][0]
+        for role, dash in (('Meat', None), ('Point', None), ('Grate', 'dashdot'), ('Pit', 'longdash'), ('Hold', 'longdashdot')):
+            profile.role, profile.is_setpoint = role, False
+            self.assertEqual(_line(profile, settings).get('dash'), dash, role)
+        profile.role, profile.is_setpoint = 'Setpoint', True
+        self.assertEqual(_line(profile, settings)['dash'], 'dash')
+
+    def test_chart_to_data_files_and_start_time_source(self):
+        profiles, messages = load('c2d_typhur_probe_1.csv', 'c2d_typhur_probe_2.csv')
+        self.assertEqual([p.channel for p in profiles], ['Ambient temperature', 'Meat temperature'] * 2)
+        self.assertEqual([p.metadata['start_source'] for p in profiles], ['read and confirmed'] * 2 + ['typed'] * 2)
+        text = ' '.join(messages)
+        self.assertIn('Start time typed', text)
+        self.assertNotIn('Start time source', text)                               # not listed as a skipped column
+        self.assertEqual(profiles[2].data.timestamp.iloc[0], ts('2026-10-16 10:30'))   # probe 2 started 30 min later
+
+    def test_merged_export_reimports_with_the_same_roles(self):
+        profiles, _ = load('c2d_typhur_probe_1.csv', 'c2d_typhur_probe_2.csv', 'ok_device_cest.csv')
+        roles = {'Ambient temperature': 'Grate', 'Meat temperature': 'Point', 'cavity temperature': 'Pit', 'Probe 1': 'Flat', 'Probe 2': 'Meat'}
+        for p in profiles:
+            p.role, p.probe = roles[p.channel], default_probe(p.source_file, p.channel)
+            p.name = profile_name(p.probe, p.role)
+        sheet = export_sheets(profiles, 'As logged')[0][1]
+        columns = [c for c in sheet.columns if c != 'Timestamp']
+        self.assertEqual(len(columns), len(profiles))
+        self.assertEqual([default_role(c) for c in columns], [p.role for p in profiles])
+        self.assertEqual([analyzer_role(c) for c in columns], [ANALYZER_ROLE[p.role] for p in profiles])
 
 
 if __name__ == '__main__':
