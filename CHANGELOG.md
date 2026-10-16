@@ -4,7 +4,7 @@ All releases of the Cook Profile Dashboard, newest first. Dates are when each re
 
 ## [1.7.0] - 2026-10-16
 
-Roles for multi-device cooks (Typhur + Weber), as agreed on 16 October 2026. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+Roles for multi-device cooks (Typhur + Weber), as agreed on 16 October 2026. Commit [`aae9a5c`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/aae9a5c).
 
 ### Added
 - **Check the import.** After "Import uploaded files", a card lists every temperature column found. Nothing is added until "Add" is clicked; "Cancel" adds nothing. Each column has:
@@ -372,7 +372,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
-[1.7.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/aaecc53...COMMIT
+[1.7.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/aaecc53...aae9a5c
 [1.6.10]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/6f20a3d...aaecc53
 [1.6.9]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d6654f9...6f20a3d
 [1.6.8]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/4798881...d6654f9
