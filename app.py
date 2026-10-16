@@ -119,7 +119,7 @@ with st.sidebar:
     st.button('Clear all profiles', width='stretch', key='clear_profiles_button', on_click=clear_profiles)
 
     st.markdown('<div class="section-label">APPEARANCE</div>', unsafe_allow_html=True)
-    theme = st.segmented_control('Theme', ['Light', 'Dark'], default='Light', key='theme_selector') or 'Light'
+    theme = st.segmented_control('Theme', ['Light', 'Dark'], default='Dark', key='theme_selector') or 'Dark'
     alignment_modes = {'Start': 'Original timeline', 'Peak': 'Align peak', 'End': 'Align end', 'Clock': 'Clock time'}
     alignment_help = (
         '**Start**: every profile starts at zero.\n\n'
@@ -141,9 +141,14 @@ with st.sidebar:
     st.markdown('<div class="section-label">CHART OPTIONS</div>', unsafe_allow_html=True)
     grid = st.toggle('Grid lines', True, key='grid_lines_toggle')
     legend = st.toggle('Legend', True, key='legend_toggle')
-    width = st.number_input('Line width', min_value=1.0, max_value=5.0, value=2.5, step=0.5, format='%.1f', key='line_width_input')
-    image_format = st.segmented_control('Image download', ['PNG', 'JPEG'], default='PNG', key='image_format_selector',
-                                        help='File type saved by the camera icon in the top right of each chart.') or 'PNG'
+    width = st.number_input('Line width', min_value=1.0, max_value=5.0, value=3.5, step=0.5, format='%.1f', key='line_width_input')
+    show_target = st.toggle('Target line', False, key='target_line_toggle',
+                            help='A straight line across the chart at the temperature the cook aimed for, for example 200 °C. '
+                                 'Drawn on the comparison chart and the selected profile\'s chart, and included in saved chart images.')
+    target = st.number_input('Target temperature (°C)', min_value=-50.0, max_value=500.0, value=200.0, step=1.0, format='%.0f',
+                             key='target_value') if show_target else None
+    image_format = st.segmented_control('Image download', ['PNG', 'JPEG'], default='JPEG', key='image_format_selector',
+                                        help='File type saved by the camera icon in the top right of each chart.') or 'JPEG'
     if st.session_state.get('import_messages'):
         with st.expander('Import notes', expanded=True):
             for message in st.session_state.import_messages:
@@ -308,7 +313,7 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 hr {{border-color:var(--border)!important;}}
 {tint_css}</style>''', unsafe_allow_html=True)
 
-settings = {'alignment': alignment, 'theme': theme, 'grid': grid, 'legend': legend, 'width': width, 'smoothing_minutes': smoothing_minutes}
+settings = {'alignment': alignment, 'theme': theme, 'grid': grid, 'legend': legend, 'width': width, 'smoothing_minutes': smoothing_minutes, 'target': target}
 st.markdown(f'<div class="page-kicker">Cook profile studio</div><div class="page-title">Cook Profile Dashboard</div><div class="page-version">Version {VERSION}</div><div class="page-note">Compare uploaded temperature profiles in a clean, consistent workspace. All temperatures are in degrees Celsius.</div>', unsafe_allow_html=True)
 
 if not P:

@@ -92,6 +92,20 @@ def _layout(fig, settings, title, height=None, x_title=None, y_title='Temperatur
     return fig
 
 
+def _target(fig, settings):
+    """The target line: a dotted line across the chart at the temperature the cook aimed for, labelled at the left.
+    In the page's text colour, so it never looks like one of the profiles."""
+    value = settings.get('target')
+    if value is None:
+        return fig
+    colors = _palette(settings['theme'])
+    fig.add_hline(y=value, line={'color': colors['text'], 'width': 2, 'dash': 'dot'}, layer='above',
+                  annotation={'text': f'Target {value:g} °C', 'font': {'color': colors['text'], 'size': 12},
+                              'bgcolor': colors['bg'], 'borderpad': 2},
+                  annotation_position='top left')
+    return fig
+
+
 def without_clock(profiles):
     """Profiles that have no clock times, so cannot be placed in Clock alignment."""
     return [p for p in profiles if 'timestamp' not in p.data]
@@ -114,7 +128,7 @@ def comparison(profiles, settings, subtitle=None):
             meta=[profile.name, profile.channel],
             hovertemplate='<b>%{meta[0]}</b><br>Channel: %{meta[1]}<br>Temperature: %{y:.1f} °C<br>Time: %{x}<extra></extra>',
         ))
-    return _layout(fig, settings, 'Temperature profiles', subtitle=subtitle)
+    return _target(_layout(fig, settings, 'Temperature profiles', subtitle=subtitle), settings)
 
 
 def single(profile, settings):
@@ -138,7 +152,7 @@ def single(profile, settings):
         line=_line(profile, settings),
         hovertemplate='Temperature: %{y:.1f} °C<br>Time: %{x}<extra></extra>',
     ))
-    return _layout(fig, settings, profile.name)
+    return _target(_layout(fig, settings, profile.name), settings)
 
 
 def deviation(result, settings):

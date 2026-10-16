@@ -271,6 +271,13 @@ class M6LongCooks(unittest.TestCase):
         self.assertIsNone(comparison([pit], self.settings).layout.height)
         self.assertIsNone(single(pit, self.settings).layout.height)
 
+    def test_target_line_follows_the_setting(self):
+        pit = long_cook()
+        self.assertFalse(comparison([pit], self.settings).layout.shapes)
+        fig = single(pit, dict(self.settings, target=200.0, theme='Dark'))
+        self.assertEqual((fig.layout.shapes[0].y0, fig.layout.shapes[0].line.color), (200.0, '#E5E7EB'))
+        self.assertEqual(fig.layout.annotations[-1].text, 'Target 200 °C')
+
     def test_setpoint_difference_chart_is_thinned(self):
         setpoint, probe = long_cook(name='Set'), long_cook(name='Probe')
         setpoint.data['temperature_c'] = 110.0

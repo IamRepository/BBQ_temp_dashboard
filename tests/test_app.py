@@ -236,3 +236,33 @@ class V169CompactLayout(unittest.TestCase):
         self.assertIn('ok_device_cest.csv', status)
         self.assertIn('samples shown', status)
         self.assertIn('offset +0:03:30 (h:mm:ss)', status)
+
+
+class V1610DefaultsAndTarget(unittest.TestCase):
+    def setUp(self):
+        self.profiles, _ = load_uploaded_files([Upload(DATA / 'ok_device_cest.csv'), Upload(DATA / 'h5_fixed_setpoint.csv')])
+        self.at = page(self.profiles)
+
+    def charts(self):
+        import json
+        return [(json.loads(c.proto.spec), json.loads(c.proto.config)) for c in self.at.get('plotly_chart')]
+
+    def test_opens_dark_with_jpeg_and_line_width_3_5(self):
+        figure, config = self.charts()[0]
+        self.assertEqual(figure['layout']['paper_bgcolor'], '#111827')          # dark chart background
+        self.assertEqual(config['toImageButtonOptions']['format'], 'jpeg')
+        self.assertEqual(self.at.number_input(key='line_width_input').value, 3.5)
+        self.assertEqual(figure['data'][0]['line']['width'], 3.5)
+
+    def test_target_line_on_both_profile_charts(self):
+        at = self.at
+        self.assertFalse(any(f['layout'].get('shapes') for f, _ in self.charts()))   # off by default
+        at.toggle(key='target_line_toggle').set_value(True).run()
+        self.assertEqual(at.number_input(key='target_value').value, 200.0)
+        at.number_input(key='target_value').set_value(185).run()
+        self.assertEqual(problems(at), [])
+        figures = [f for f, _ in self.charts()]
+        for figure in (figures[0], figures[-1]):                                  # comparison and selected profile
+            shape = figure['layout']['shapes'][0]
+            self.assertEqual((shape['y0'], shape['y1'], shape['line']['dash']), (185, 185, 'dot'))
+            self.assertIn('Target 185 °C', [a['text'] for a in figure['layout']['annotations']])

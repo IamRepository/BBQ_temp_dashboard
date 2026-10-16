@@ -2,6 +2,27 @@
 
 All releases of the Cook Profile Dashboard, newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.6.10] - 2026-10-16
+
+Target line and new defaults. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Added
+- **Target line.** A new "Target line" switch under Chart options draws a straight, dotted line across the chart at the temperature the cook aimed for. It is labelled at the left, for example "Target 200 °C".
+  - The temperature is set in "Target temperature (°C)", which appears when the switch is on; it starts at 200 °C.
+  - The line appears on the comparison chart and the selected profile's chart, and in images saved from them.
+  - It is drawn in the page's text colour (light in dark mode, dark in light mode), so it never looks like one of the profiles.
+  - The temperature axis stretches to include the target when it is above or below all readings.
+  - It is not part of the Excel export or the setpoint comparison; for a target that changes during the cook, use a setpoint profile.
+- 3 more regression tests (59 in all): the new defaults, and the target line on both charts.
+
+### Changed
+- The app opens in **dark mode**; Light is one click away under Theme.
+- Chart images are saved as **JPEG** by default; PNG is still available under Image download.
+- The default **line width is 3.5** (was 2.5).
+
+### Upgrade note
+- Reboot the app on Streamlit Community Cloud after deploying (Manage app, three dots, Reboot app): `chart_builder.py` changed.
+
 ## [1.6.9] - 2026-10-13
 
 Compact Profile details on the same screen as the chart. Commit [`6f20a3d`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/6f20a3d).
@@ -314,6 +335,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.6.10]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/6f20a3d...COMMIT
 [1.6.9]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d6654f9...6f20a3d
 [1.6.8]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/4798881...d6654f9
 [1.6.7]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/5bd1ab2...4798881
