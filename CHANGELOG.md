@@ -4,7 +4,7 @@ All releases of the Cook Profile Dashboard, newest first. Dates are when each re
 
 ## [1.6.10] - 2026-10-16
 
-Target line and new defaults. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+Target line and new defaults. Commit [`aaecc53`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/aaecc53).
 
 ### Added
 - **Target line.** A new "Target line" switch under Chart options draws a straight, dotted line across the chart at the temperature the cook aimed for. It is labelled at the left, for example "Target 200 °C".
@@ -335,7 +335,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
-[1.6.10]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/6f20a3d...COMMIT
+[1.6.10]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/6f20a3d...aaecc53
 [1.6.9]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d6654f9...6f20a3d
 [1.6.8]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/4798881...d6654f9
 [1.6.7]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/5bd1ab2...4798881
