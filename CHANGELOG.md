@@ -4,7 +4,7 @@ All releases of the Cook Profile Dashboard, newest first. Dates are when each re
 
 ## [1.7.1] - 2026-10-17
 
-Line style chosen per profile; no automatic dashes. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+Line style chosen per profile; no automatic dashes. Commit [`c0b7cb5`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/c0b7cb5).
 
 ### Changed
 - **Every line is solid unless you choose otherwise.** In 1.7.0 the role set the line style (Pit long dash, Grate dash-dot, Hold long dash-dot), so the Weber pit line was always dashed. The role no longer changes how a line is drawn.
@@ -393,7 +393,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
-[1.7.1]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/aae9a5c...COMMIT
+[1.7.1]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/aae9a5c...c0b7cb5
 [1.7.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/aaecc53...aae9a5c
 [1.6.10]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/6f20a3d...aaecc53
 [1.6.9]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d6654f9...6f20a3d
