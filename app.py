@@ -6,7 +6,7 @@ import streamlit as st
 import uuid
 
 from profile_loader import COLORS, load_uploaded_files
-from roles import ROLES, ROLE_HELP, default_probe, default_role, probe_colours, profile_name, unique_names
+from roles import LINE_STYLES, ROLES, ROLE_HELP, line_dash, line_style_name, default_probe, default_role, probe_colours, profile_name, unique_names
 from chart_builder import comparison, single, deviation, without_clock
 from analysis import compare
 from export_utils import EXPORT_INTERVALS, export_filename, profiles_to_excel
@@ -106,12 +106,18 @@ def apply_import():
         st.session_state.selected_profile_id = None
 
 
+def change_line_style(profile_id, widget_key):
+    profile = next((p for p in st.session_state.profiles if p.profile_id == profile_id), None)
+    if profile is not None:
+        profile.line_style = LINE_STYLES[st.session_state[widget_key]]
+
+
 def cancel_import():
     st.session_state.pop('pending_import', None)
 
 
 def change_role(profile_id, widget_key, name_key):
-    # A new role changes the line style and the setpoint flag; a name still in the default form follows it.
+    # A new role changes the setpoint flag (and so the default line style); a name still in the default form follows it.
     profile = next((p for p in st.session_state.profiles if p.profile_id == profile_id), None)
     if profile is None:
         return
@@ -379,7 +385,7 @@ pending = st.session_state.get('pending_import')
 if pending:
     with st.container(border=True, key='import_review_card'):
         st.markdown('<div class="card-title">Check the import</div><div class="card-note">Choose which columns to add, what each one measures and which probe it comes from. '
-                    'Profiles of one probe share a colour; the role sets the line style.</div>', unsafe_allow_html=True)
+                    'Profiles of one probe share a colour. Colour and line style can be changed per profile afterwards.</div>', unsafe_allow_html=True)
         new_profiles = pending['profiles']
         if not new_profiles:
             st.warning('No new temperature columns were found. Import notes in the sidebar say why.')
@@ -390,7 +396,7 @@ if pending:
             head = st.columns(widths, gap='small')
             for column, text, tip in zip(head, ['Import', 'File and column', 'Probe', 'Role'],
                                          ['Untick to leave a column out.', '', 'Which probe or device the column comes from. Columns with the same probe share a colour, for example "Typhur 2".',
-                                          'What the column measures. Sets the line style and the name in the Excel export.']):
+                                          'What the column measures. Sets the name in the Excel export; Setpoint also makes it a setpoint.']):
                 column.markdown(f'<div class="import-head" title="{tip}">{text}</div>', unsafe_allow_html=True)
             for i, p in enumerate(new_profiles):
                 c1, c2, c3, c4 = st.columns(widths, gap='small', vertical_alignment='center')
@@ -444,7 +450,7 @@ st.write('')
 with st.container(border=True, key='profile_details_card'):
     st.markdown('<div class="card-title compact">Profile details</div>', unsafe_allow_html=True)
     profile_dropdown_style('Profile', [profile_by_id[pid] for pid in profile_ids])   # a style element: kept out of the columns so labels line up
-    d1, d2, d3, d4, d5, d6 = st.columns([2.1, 1.6, 1.3, 1.3, 0.5, 1.95], gap='small', vertical_alignment='bottom')
+    d1, d2, d3, d4, d5, d7, d6 = st.columns([1.85, 1.45, 1.15, 1.4, 0.5, 1.2, 1.3], gap='small', vertical_alignment='bottom')
     with d1:
         selected_id = st.selectbox('Profile', profile_ids, format_func=lambda pid: profile_by_id[pid].name, key='selected_profile_id', on_change=clear_rename_error)
         selected = profile_by_id[selected_id]
@@ -455,19 +461,25 @@ with st.container(border=True, key='profile_details_card'):
     with d3:
         channel = st.text_input('Channel label', selected.channel, key=f'{edit_key}_channel')
     with d4:
-        offset_minutes = st.number_input('Time offset (min)', min_value=-1440.0, max_value=1440.0, value=float(selected.offset_hours) * 60,
+        offset_minutes = st.number_input('Offset (min)', min_value=-1440.0, max_value=1440.0, value=float(selected.offset_hours) * 60,
                                          step=1.0, format='%.2f', key=f'{edit_key}_offset_min',
                                          help='Shifts this profile in time, for example to correct a device clock. Whole minutes, with decimals for seconds (3.5 = 3 min 30 s). Up to 24 hours either way. The offset is shown as h:mm:ss under the trim slider.')
         offset = offset_minutes / 60
     with d5:
         color = st.color_picker('Color', selected.color, key=f'{edit_key}_color')
+    with d7:
+        style_key = f'{edit_key}_style'
+        st.session_state[style_key] = line_style_name(line_dash(selected))
+        st.selectbox('Line style', list(LINE_STYLES), key=style_key, on_change=change_line_style, args=(selected.profile_id, style_key),
+                     help='How this line is drawn. Every line is solid unless you choose otherwise; a setpoint starts dashed. '
+                          'The style shows in the chart, the legend and saved images.')
     with d6:
         role_key = f'{edit_key}_role'
         if st.session_state.get(role_key) != selected.role:
             st.session_state[role_key] = selected.role
         st.selectbox('Role', ROLES, key=role_key, on_change=change_role, args=(selected.profile_id, role_key, name_key),
-                     help='What this profile measures. Sets the line style (solid for meat, dash-dot for grate, long dash for pit, dashed for a setpoint) '
-                          'and the name in the Excel export. Setpoint: drawn dashed, never smoothed, and compared with a probe under Setpoint vs measured.')
+                     help='What this profile measures. Sets the name in the Excel export. '
+                          'Setpoint: starts dashed, never smoothed, and compared with a probe under Setpoint vs measured.')
     selected.channel, selected.offset_hours, selected.color = channel, offset, color
     if st.session_state.get('rename_error'):
         st.warning(st.session_state.rename_error)

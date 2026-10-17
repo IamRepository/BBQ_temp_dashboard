@@ -2,6 +2,27 @@
 
 All releases of the Cook Profile Dashboard, newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.7.1] - 2026-10-17
+
+Line style chosen per profile; no automatic dashes. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Changed
+- **Every line is solid unless you choose otherwise.** In 1.7.0 the role set the line style (Pit long dash, Grate dash-dot, Hold long dash-dot), so the Weber pit line was always dashed. The role no longer changes how a line is drawn.
+- **New "Line style" choice** in Profile details, next to Color: Solid, Dashed, Dotted, Dash-dot or Long dash.
+  - The choice is per profile, like the colour.
+  - It shows in the chart, the legend and saved images.
+- **Setpoints still start dashed,** as since 1.6.0. Their style can be changed like any other profile's.
+- **Labels shortened to fit the extra control on one row:**
+  - "Time offset (min)" is now "Offset (min)".
+  - The Role help no longer mentions line styles.
+  - The Check the import note now says that colour and line style can be changed per profile afterwards.
+
+### Added
+- 2 more regression tests (75 in all): lines solid unless chosen, and the Line style choice changing only its own profile, including a setpoint made solid.
+
+### Upgrade note
+- Reboot the app on Streamlit Community Cloud after deploying (Manage app, three dots, Reboot app): `roles.py`, `chart_builder.py` and `models.py` changed.
+
 ## [1.7.0] - 2026-10-16
 
 Roles for multi-device cooks (Typhur + Weber), as agreed on 16 October 2026. Commit [`aae9a5c`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/aae9a5c).
@@ -372,6 +393,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.7.1]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/aae9a5c...COMMIT
 [1.7.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/aaecc53...aae9a5c
 [1.6.10]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/6f20a3d...aaecc53
 [1.6.9]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d6654f9...6f20a3d

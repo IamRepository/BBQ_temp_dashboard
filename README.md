@@ -1,16 +1,16 @@
-# Cook Profile Dashboard v1.7.0
+# Cook Profile Dashboard v1.7.1
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
 
-**What's new in 1.7.0:** roles for multi-device cooks. At import you check each column, its role (Meat, Point, Flat, Grate, Pit, Hold, Setpoint, Other) and its probe; colour follows the probe and line style the role, and the Excel export uses names the Brisket Tenderness Analyzer reads correctly. Typhur files from BBQ Chart to Data with a typed start time are flagged. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
+**What's new in 1.7.1:** every line is solid unless you choose otherwise: a new Line style choice per profile (Solid, Dashed, Dotted, Dash-dot, Long dash) sits next to Color. Since 1.7.0: roles for multi-device cooks, a Check the import step, colour by probe, and Excel export names the Brisket Tenderness Analyzer reads correctly. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Features
 - Import one or more CSV, XLSX or XLS files, then check the import: tick the columns to add, and set each one's role and probe before anything is added. Each temperature column becomes a profile named "<probe> - <role>". Day-first (03/10/2026) and year-first (2026-10-03) dates, Excel dates, elapsed-time columns, zone names and UTC offsets, the clock change, probe dropouts and Fahrenheit are handled, and an Import notes panel reports what was found and skipped.
 - Page layout, top to bottom: overview cards; one card with Profile details (two compact rows and a status line), the comparison chart and the Excel export; Setpoint vs measured; then the selected profile's statistics and chart.
 - Overlay profiles on one chart, aligned by start, peak, end or clock time, with optional smoothing (1, 5 or 10 min). Long cooks are drawn with at most 4,000 points per line, keeping each stretch's lowest and highest reading so short spikes still show; statistics, the setpoint comparison and the export use every reading.
-- Roles: Meat, Point, Flat, Grate, Pit, Hold, Setpoint and Other, suggested from the column name (for example Typhur Ambient as Grate, Typhur Meat as Meat, the Weber cavity as Pit). Profiles of one probe share a colour; the role sets the line style (solid for meat, dash-dot for grate, long dash for pit, dashed for a setpoint). With more than four lines the legend moves beside the chart.
+- Roles: Meat, Point, Flat, Grate, Pit, Hold, Setpoint and Other, suggested from the column name (for example Typhur Ambient as Grate, Typhur Meat as Meat, the Weber cavity as Pit). Profiles of one probe share a colour. Every line is solid unless a Line style is chosen in Profile details (Solid, Dashed, Dotted, Dash-dot, Long dash); a setpoint starts dashed. With more than four lines the legend moves beside the chart.
 - BBQ Chart to Data files (Timestamp, Ambient and Meat temperature) import directly; a "Start time source" column saying "typed" is flagged in Import notes and the status line.
-- Per profile: role, display name, channel label, line colour, time offset in minutes, a trim slider for the visible data window, and a setpoint flag (dashed line).
+- Per profile: role, line style, display name, channel label, line colour, time offset in minutes, a trim slider for the visible data window, and a setpoint flag (dashed line).
 - Trim all profiles together: one slider sets the same time window (clock time, or hours from the start for files without clock times) for every loaded profile.
 - Setpoint vs measured: how closely a probe followed the cooker's set temperature, with time within a chosen band.
 - Light and dark themes (dark by default); chart images as JPEG (default) or PNG from each chart's camera icon; line width 3.5 by default.
@@ -39,7 +39,7 @@ After a release that changes files other than `app.py`, reboot the app (Manage a
 | --- | --- |
 | `app.py` | Page layout, sidebar, profile details and all user interaction |
 | `profile_loader.py` | Reading CSV and Excel files into profiles |
-| `roles.py` | Roles, probe labels, line styles and the Analyzer-safe export names |
+| `roles.py` | Roles, probe labels, line style choices and the Analyzer-safe export names |
 | `models.py` | The profile object: data, trim window, offset, setpoint flag |
 | `chart_builder.py` | The Plotly charts |
 | `analysis.py` | Smoothing and the setpoint comparison |
@@ -53,7 +53,7 @@ Run before every release, from the repository root:
 ```bash
 python -m unittest discover -s tests -v
 ```
-There are 73 tests. `tests/test_import.py` checks file import against the example files in `tests/data` (made by `tests/make_fixtures.py`, no real cook data), plus the export, chart thinning on a made-up 18-hour cook, trimming and the pinned versions. `tests/test_app.py` loads every example file into the page and exercises the main interactions, including Trim all profiles together. Each fixed issue has its own test, named after its audit number (H1, M6, L9 and so on).
+There are 75 tests. `tests/test_import.py` checks file import against the example files in `tests/data` (made by `tests/make_fixtures.py`, no real cook data), plus the export, chart thinning on a made-up 18-hour cook, trimming and the pinned versions. `tests/test_app.py` loads every example file into the page and exercises the main interactions, including Trim all profiles together. Each fixed issue has its own test, named after its audit number (H1, M6, L9 and so on).
 
 ## Input assumptions
 - Temperatures are Celsius unless the column header says °F, (F) or Fahrenheit; those are converted.

@@ -373,14 +373,18 @@ class V170Roles(unittest.TestCase):
         self.assertEqual(again['Typhur 1'], colours['Typhur 1'])
         self.assertNotEqual(again['New probe'], colours['Typhur 1'])
 
-    def test_line_style_follows_the_role(self):
+    def test_lines_are_solid_unless_chosen(self):   # v1.7.1: no automatic dashes; style chosen per profile
         settings = {'width': 3.5}
         profile = load('c2d_typhur_probe_1.csv')[0][0]
-        for role, dash in (('Meat', None), ('Point', None), ('Grate', 'dashdot'), ('Pit', 'longdash'), ('Hold', 'longdashdot')):
+        for role in ('Meat', 'Point', 'Grate', 'Pit', 'Hold', 'Other'):
             profile.role, profile.is_setpoint = role, False
-            self.assertEqual(_line(profile, settings).get('dash'), dash, role)
+            self.assertIsNone(_line(profile, settings).get('dash'), role)
         profile.role, profile.is_setpoint = 'Setpoint', True
-        self.assertEqual(_line(profile, settings)['dash'], 'dash')
+        self.assertEqual(_line(profile, settings)['dash'], 'dash')                 # a setpoint starts dashed
+        profile.line_style = 'solid'
+        self.assertIsNone(_line(profile, settings).get('dash'))                     # ... and can be made solid
+        profile.role, profile.is_setpoint, profile.line_style = 'Pit', False, 'dot'
+        self.assertEqual(_line(profile, settings)['dash'], 'dot')
 
     def test_chart_to_data_files_and_start_time_source(self):
         profiles, messages = load('c2d_typhur_probe_1.csv', 'c2d_typhur_probe_2.csv')

@@ -3,7 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from analysis import smooth
-from roles import ROLE_DASH
+from roles import line_dash
 
 # Most points drawn per line. A long cook logged every second has tens of thousands of readings, more than a
 # chart can show; drawing all of them made every click slow. Statistics, the setpoint comparison and the Excel
@@ -55,9 +55,9 @@ def _x(profile, mode, y=None):
 
 
 def _line(profile, settings):
-    # Colour follows the probe, line style follows the role (roles.ROLE_DASH); setpoints are always dashed.
+    # Colour and line style are the profile's own (Profile details); solid unless chosen, a setpoint starts dashed.
     line = {'color': profile.color, 'width': settings['width']}
-    dash = 'dash' if profile.is_setpoint else ROLE_DASH.get(getattr(profile, 'role', ''), 'solid')
+    dash = line_dash(profile)
     if dash != 'solid':
         line['dash'] = dash
     return line

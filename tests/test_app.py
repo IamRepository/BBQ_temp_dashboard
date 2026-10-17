@@ -305,8 +305,8 @@ class V170ImportReview(unittest.TestCase):
         self.assertEqual(len({p.color for p in profiles}), 5)                                                     # 5 probes
         self.assertTrue(by_name['ok_device_cest - Pit'].role == 'Pit' and not by_name['ok_device_cest - Pit'].is_setpoint)
         traces = {t['name']: t.get('line', {}).get('dash') for t in json.loads(at.get('plotly_chart')[0].proto.spec)['data']}
-        self.assertEqual(traces['c2d_typhur_probe_1 - Grate'], 'dashdot')
-        self.assertEqual(traces['ok_device_cest - Pit'], 'longdash')
+        self.assertIsNone(traces['c2d_typhur_probe_1 - Grate'])     # v1.7.1: solid unless a style is chosen
+        self.assertIsNone(traces['ok_device_cest - Pit'])
         self.assertIsNone(traces['c2d_typhur_probe_1 - Meat'])
 
     def test_choices_are_applied(self):
@@ -346,3 +346,37 @@ class V170ImportReview(unittest.TestCase):
         pit = next(p for p in at.session_state['profiles'] if p.profile_id == pit.profile_id)
         self.assertEqual((pit.name, pit.is_setpoint), ('ok_device_cest - Setpoint', True))
         self.assertFalse(any('Set the Role of a profile to "Setpoint"' in i.value for i in at.info))   # comparison now available
+
+
+class V171LineStyle(unittest.TestCase):
+    def setUp(self):
+        self.profiles, _ = load_uploaded_files([Upload(DATA / 'ok_device_cest.csv'), Upload(DATA / 'h5_fixed_setpoint.csv')])
+        self.at = page(self.profiles)
+
+    def dashes(self):
+        import json
+        return {t['name']: t.get('line', {}).get('dash') for t in json.loads(self.at.get('plotly_chart')[0].proto.spec)['data']}
+
+    def test_line_style_per_profile(self):
+        at = self.at
+        selected = at.session_state['selected_profile_id']
+        name = next(p.name for p in self.profiles if p.profile_id == selected)
+        box = at.selectbox(key=f'edit_{selected}_style')
+        self.assertEqual((box.label, box.value), ('Line style', 'Solid'))
+        self.assertIsNone(self.dashes()[name])
+        box.set_value('Dotted').run()
+        self.assertEqual(problems(at), [])
+        self.assertEqual(self.dashes()[name], 'dot')
+        others = [p.name for p in self.profiles if p.profile_id != selected]
+        self.assertTrue(all(self.dashes()[n] is None for n in others))            # only this profile changed
+
+    def test_setpoint_role_starts_dashed_and_can_be_solid(self):
+        at = self.at
+        setpoint = next(p for p in self.profiles if p.channel == 'Setpoint')
+        at.selectbox(key='selected_profile_id').set_value(setpoint.profile_id).run()
+        at.selectbox(key=f'edit_{setpoint.profile_id}_role').set_value('Setpoint').run()
+        name = next(p.name for p in at.session_state['profiles'] if p.profile_id == setpoint.profile_id)
+        self.assertEqual(at.selectbox(key=f'edit_{setpoint.profile_id}_style').value, 'Dashed')
+        self.assertEqual(self.dashes()[name + ' (setpoint)'], 'dash')
+        at.selectbox(key=f'edit_{setpoint.profile_id}_style').set_value('Solid').run()
+        self.assertIsNone(self.dashes()[name + ' (setpoint)'])

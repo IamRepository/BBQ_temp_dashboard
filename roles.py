@@ -1,8 +1,9 @@
 """Roles for multi-device cooks (v1.7.0).
 
 Each profile has a role (what it measures) and a probe label (which probe or device it comes from).
-Colour follows the probe and line style follows the role, so four Typhur probes with an ambient and a
-meat line each, plus a Weber controller, stay within the 8 validated colours.
+Colour follows the probe, so four Typhur probes with an ambient and a meat line each, plus a Weber
+controller, stay within the 8 validated colours. Line style is chosen per profile (solid unless the user picks
+another; a setpoint starts dashed).
 
 The Excel export names are made to be read correctly by the Brisket Tenderness Analyzer, which picks a
 role for each column from words in its name (pit_engine.classify_columns, Analyzer v2.8.3).
@@ -19,13 +20,25 @@ ROLE_HELP = {
     'Grate': 'Air temperature at grate level, for example a Typhur Ambient reading.',
     'Pit': "The cooker's own controller or cavity reading, for example the Weber Smoque XL.",
     'Hold': 'Air temperature in the holding oven or cabinet.',
-    'Setpoint': 'The temperature the cooker was set to hold. Drawn dashed, never smoothed, and used in Setpoint vs measured.',
+    'Setpoint': 'The temperature the cooker was set to hold. Starts dashed, never smoothed, and used in Setpoint vs measured.',
     'Other': 'Anything else.',
 }
 
-# Line style per role (Plotly dash names). Setpoints stay dashed as before; the target line is dotted.
-ROLE_DASH = {'Meat': 'solid', 'Point': 'solid', 'Flat': 'solid', 'Grate': 'dashdot', 'Pit': 'longdash',
-             'Hold': 'longdashdot', 'Setpoint': 'dash', 'Other': 'solid', '': 'solid'}
+# Line styles the user can choose per profile (name shown -> Plotly dash). Every line is solid unless the user
+# picks another style; a setpoint starts dashed, as since v1.6. The target line is dotted.
+LINE_STYLES = {'Solid': 'solid', 'Dashed': 'dash', 'Dotted': 'dot', 'Dash-dot': 'dashdot', 'Long dash': 'longdash'}
+
+
+def line_dash(profile):
+    """The Plotly dash for a profile: its own choice, otherwise dashed for a setpoint and solid for anything else."""
+    chosen = getattr(profile, 'line_style', '')
+    if chosen in LINE_STYLES.values():
+        return chosen
+    return 'dash' if profile.is_setpoint or getattr(profile, 'role', '') == 'Setpoint' else 'solid'
+
+
+def line_style_name(dash):
+    return next((name for name, value in LINE_STYLES.items() if value == dash), 'Solid')
 
 # Default role from the column name, checked in this order.
 _DEFAULTS = [
