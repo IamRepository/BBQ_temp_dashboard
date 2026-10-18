@@ -473,3 +473,41 @@ class V174TextSizeAndTargetLabels(unittest.TestCase):
         big = self.layouts()[0]
         self.assertEqual(big['title']['font']['size'], 27)
         self.assertGreater(big['margin']['t'], base['margin']['t'])
+
+
+class V176RolesShown(unittest.TestCase):
+    def setUp(self):
+        self.profiles, _ = load_uploaded_files([Upload(DATA / 'c2d_typhur_probe_1.csv'), Upload(DATA / 'ok_device_cest.csv')])
+        roles = {'Ambient temperature': 'Ambient', 'Meat temperature': 'Meat', 'cavity temperature': 'Pit', 'Probe 1': 'Meat', 'Probe 2': 'Meat'}
+        for p in self.profiles:
+            p.role = roles[p.channel]
+        self.at = page(self.profiles)
+
+    def chart(self):
+        import json
+        return json.loads(self.at.get('plotly_chart')[0].proto.spec)
+
+    def pills(self):
+        return next(g for g in self.at.get('button_group') if str(g.key).startswith('roles_shown_'))
+
+    def test_legend_grouped_by_role_and_beside_the_plot(self):
+        figure = self.chart()
+        titles = [t['legendgrouptitle']['text'] for t in figure['data']]
+        self.assertEqual(titles, sorted(titles, key=['Meat', 'Point', 'Flat', 'Ambient', 'Grate', 'Pit', 'Hold', 'Setpoint', 'Other'].index))
+        self.assertEqual(figure['layout']['legend']['orientation'], 'v')
+        self.assertEqual(self.pills().options, ['Meat', 'Ambient', 'Pit'])
+
+    def test_switching_a_role_off_and_keeping_it_off(self):
+        at = self.at
+        self.pills().set_value(['Ambient', 'Pit']).run()
+        self.assertEqual(problems(at), [])
+        figure = self.chart()
+        self.assertEqual({t['legendgrouptitle']['text'] for t in figure['data']}, {'Ambient', 'Pit'})
+        self.assertIn('hidden: Meat', figure['layout']['title']['subtitle']['text'])
+        self.assertTrue(figure['layout']['title']['subtitle']['text'].startswith('2 of 5 profiles'))
+        at.toggle(key='grid_lines_toggle').set_value(False).run()                 # any other change keeps the choice
+        self.assertEqual({t['legendgrouptitle']['text'] for t in self.chart()['data']}, {'Ambient', 'Pit'})
+        self.assertEqual(set(self.pills().value), {'Ambient', 'Pit'})
+        self.pills().set_value(['Meat', 'Ambient', 'Pit']).run()
+        self.assertEqual(len(self.chart()['data']), 5)
+        self.assertNotIn('hidden', self.chart()['layout']['title']['subtitle']['text'])

@@ -5,7 +5,7 @@ import pandas as pd
 import plotly.graph_objects as go
 
 from analysis import smooth
-from roles import line_dash
+from roles import ROLES, line_dash
 
 # Most points drawn per line. A long cook logged every second has tens of thousands of readings, more than a
 # chart can show; drawing all of them made every click slow. Statistics, the setpoint comparison and the Excel
@@ -78,11 +78,17 @@ TEXT_SIZES = {'100%': 1.0, '125%': 1.25, '150%': 1.5, '175%': 1.75}
 def _legend_extra(fig, settings, s):
     """Extra top margin when the legend row above the plot (up to 4 lines) wraps at a larger text size,
     estimated for a chart about 900 px wide (the narrowest common case, with the sidebar open)."""
-    if not settings.get('legend') or not 0 < len(fig.data) <= 4:
+    if not settings.get('legend') or not fig.data or _legend_beside(fig):
         return 0
     width = sum(len(str(t.name)) * 6.2 * s + 46 for t in fig.data)
     rows = int(width // 860) + 1
     return round((rows - 1) * 21 * s)
+
+
+def _legend_beside(fig):
+    """The legend goes to the right of the plot with more than 4 lines, or when it is grouped by role (its role
+    headings make it too tall for the row above the plot)."""
+    return len(fig.data) > 4 or any(getattr(t, 'legendgroup', None) for t in fig.data)
 
 
 def text_scale(settings):
@@ -104,9 +110,9 @@ def _layout(fig, settings, title, height=None, x_title=None, y_title='Temperatur
         font={'color': colors['text'], 'family': 'Inter, Arial, sans-serif', 'size': round(12 * s)},
         hovermode='x unified',
         showlegend=settings['legend'],
-        # Up to 4 lines: one row above the plot. More (a multi-probe cook): a column to the right, so a long
-        # legend never runs into the title.
-        legend=({'orientation': 'h', 'y': 1.02, 'yanchor': 'bottom', 'x': 0.02} if len(fig.data) <= 4 else
+        # A row above the plot for up to 4 ungrouped lines; otherwise (many lines, or grouped by role) a column to
+        # the right, so the legend never runs into the title.
+        legend=({'orientation': 'h', 'y': 1.02, 'yanchor': 'bottom', 'x': 0.02} if not _legend_beside(fig) else
                 {'orientation': 'v', 'y': 1, 'yanchor': 'top', 'x': 1.01, 'xanchor': 'left'})
                | {'font': {'size': round(11 * s), 'color': colors['muted']}, 'bgcolor': 'rgba(0,0,0,0)'},
         hoverlabel={'bgcolor': colors['bg'], 'bordercolor': colors['border'], 'font': {'color': colors['text'], 'size': round(13 * s)}},
@@ -163,19 +169,29 @@ def comparison(profiles, settings, subtitle=None):
     if settings['alignment'] == 'Clock time':
         # A profile with only elapsed time has no time of day; the page names the ones left out.
         profiles = [p for p in profiles if p not in without_clock(profiles)]
+    # The legend is grouped by role, with the role as a heading ("Pit", "Ambient", "Meat"), in the order of ROLES,
+    # so a saved image shows which roles are drawn.
+    order = {role: i for i, role in enumerate(ROLES)}
+    profiles = sorted(profiles, key=lambda p: order.get(getattr(p, 'role', ''), len(ROLES)))
+    colors = _palette(settings['theme'])
     for profile in profiles:
         frame = _frame(profile)
         y = _y(profile, frame, settings)
         x = _x(profile, settings['alignment'], y)
         keep = thin(x, y)
         label = f'{profile.name} (setpoint)' if profile.is_setpoint else profile.name
+        role = getattr(profile, 'role', '')
+        group = {'legendgroup': role, 'legendgrouptitle': {'text': role, 'font': {'size': round(12 * text_scale(settings)), 'color': colors['text']}}} if role else {}
         fig.add_trace(go.Scatter(
             x=_pick(x, keep), y=_pick(y, keep), mode='lines', name=label,
             line=_line(profile, settings),
             meta=[profile.name, profile.channel],
             hovertemplate='<b>%{meta[0]}</b><br>Channel: %{meta[1]}<br>Temperature: %{y:.1f} °C<br>Time: %{x}<extra></extra>',
+            **group,
         ))
-    return _target(_layout(fig, settings, 'Temperature profiles', subtitle=subtitle), settings)
+    fig = _layout(fig, settings, 'Temperature profiles', subtitle=subtitle)
+    fig.update_layout(legend={'traceorder': 'grouped', 'groupclick': 'toggleitem'})
+    return _target(fig, settings)
 
 
 def single(profile, settings):

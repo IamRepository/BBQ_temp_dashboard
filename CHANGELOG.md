@@ -2,6 +2,27 @@
 
 All releases of the Cook Profile Dashboard, newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.7.6] - 2026-10-19
+
+Switch roles on and off in the comparison chart. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Added
+- **"Roles shown" under the comparison chart.** One button per role present (for example Meat, Ambient, Pit) switches every line of that role on or off.
+  - The choice stays when anything else on the page changes.
+  - It applies to the comparison chart only. The Excel file, Setpoint vs measured and the selected profile's chart are not affected.
+- **The saved image shows the choice:**
+  - The legend is grouped by role, with the role as a heading over its lines, in the order of the roles (Meat, Point, Flat, Ambient, Grate, Pit, Hold, Setpoint, Other).
+  - Hidden roles are named at the end of the chart's summary line, for example "3 of 7 profiles | 3 devices | ... | hidden: Meat".
+- **Why the switches are under the chart.** They can't sit inside the chart's legend: Plotly cannot switch a whole group from a heading, and lines hidden by clicking the legend come back the next time Streamlit refreshes the page.
+- 2 more regression tests (85 in all): the grouped legend, and a role switched off, kept off through another change, and switched back on.
+
+### Changed
+- **Legend position.** With roles, the legend always sits to the right of the plot, because the role headings make it too tall for the row above it.
+- **Summary line wording.** It now says "1 device" rather than "1 devices", and counts only the lines drawn when roles are hidden.
+
+### Upgrade note
+- Reboot the app on Streamlit Community Cloud after deploying (Manage app, three dots, Reboot app): `chart_builder.py` changed.
+
 ## [1.7.5] - 2026-10-19
 
 Ambient role. Commit [`0f4db45`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/0f4db45).
@@ -457,6 +478,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.7.6]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/0f4db45...COMMIT
 [1.7.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d8e26da...0f4db45
 [1.7.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/3fef10d...d8e26da
 [1.7.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/0e90d49...3fef10d

@@ -116,6 +116,14 @@ def change_line_style(profile_id, widget_key):
         profile.line_style = LINE_STYLES[st.session_state[widget_key]]
 
 
+def set_hidden_roles(widget_key, present_roles):
+    shown = st.session_state.get(widget_key) or []
+    hidden = set(st.session_state.get('hidden_roles', set()))
+    hidden |= {r for r in present_roles if r not in shown}
+    hidden -= set(shown)
+    st.session_state.hidden_roles = hidden
+
+
 def cancel_import():
     st.session_state.pop('pending_import', None)
 
@@ -392,6 +400,12 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 [data-testid="stButtonGroup"] button[role="radio"] p {{color:var(--text)!important;}}
 [data-testid="stButtonGroup"] button[role="radio"][aria-checked="true"] {{background:var(--accent)!important;border-color:var(--accent)!important;}}
 [data-testid="stButtonGroup"] button[role="radio"][aria-checked="true"] p {{color:#fff!important;}}
+/* Roles shown pills: off = card colour with muted text, on = accent with white text, in both themes.
+   Streamlit 1.65 marks the state with aria-pressed, 1.60 with aria-checked. */
+[class*="st-key-roles_shown_"] button:is([aria-pressed],[aria-checked]) {{background:var(--card-alt)!important;border:1px solid var(--border)!important;}}
+[class*="st-key-roles_shown_"] button:is([aria-pressed],[aria-checked]) * {{color:var(--muted)!important;}}
+[class*="st-key-roles_shown_"] button:is([aria-pressed="true"],[aria-checked="true"]) {{background:var(--accent)!important;border-color:var(--accent)!important;}}
+[class*="st-key-roles_shown_"] button:is([aria-pressed="true"],[aria-checked="true"]) * {{color:#fff!important;}}
 [data-testid="stCheckbox"] label:has(input[role="switch"]:checked) > div:not([data-testid="stWidgetLabel"]) {{background:var(--accent)!important;}}
 [data-testid="stMetricDelta"] svg {{display:none;}}
 [data-testid="stSidebar"] hr {{margin:1rem 0;}}
@@ -566,10 +580,29 @@ with st.container(border=True, key='profile_details_card'):
     if alignment == 'Clock time' and without_clock(visible):
         st.caption('These profiles have no clock times, so they are not shown in Clock alignment: '
                    + ', '.join(p.name for p in without_clock(visible)) + '. Choose Start, Peak or End to see them.')
-    summary = f'{len(visible)} profiles  |  {devices} devices  |  {min(durations):.1f} - {max(durations):.1f} h duration range' if visible else 'No profiles shown'
+    # Roles shown: chosen under the chart, applied here (the choice is kept in session state by its callback).
+    present_roles = [r for r in ROLES if any(p.role == r for p in visible)]
+    hidden_roles = [r for r in present_roles if r in st.session_state.get('hidden_roles', set())]
+    charted = [p for p in visible if p.role not in hidden_roles]
+    if visible:
+        chart_devices = len({p.source_file for p in charted})
+        chart_durations = [p.duration_hours for p in charted] or [0.0]
+        count = f'{len(charted)} of {len(visible)} profiles' if hidden_roles else f'{len(visible)} profiles'
+        summary = f'{count}  |  {chart_devices} device{"" if chart_devices == 1 else "s"}  |  {min(chart_durations):.1f} - {max(chart_durations):.1f} h duration range'
+        if hidden_roles:
+            summary += '  |  hidden: ' + ', '.join(hidden_roles)
+    else:
+        summary = 'No profiles shown'
     with st.container(key='chart_comparison'):
-        st.plotly_chart(comparison(visible, settings, summary), width='stretch', theme=None, config=chart_config('cook_profiles', wide=True))
-    e1, e2, _ = st.columns([1.3, 1.3, 4.4], gap='small', vertical_alignment='bottom')
+        st.plotly_chart(comparison(charted, settings, summary), width='stretch', theme=None, config=chart_config('cook_profiles', wide=True))
+    e1, e2, _, e4 = st.columns([1.3, 1.3, 0.6, 3.6], gap='small', vertical_alignment='bottom')
+    if present_roles:
+        roles_key = 'roles_shown_' + '_'.join(present_roles)   # a new widget when the set of roles changes
+        e4.pills('Roles shown', present_roles, selection_mode='multi', default=[r for r in present_roles if r not in hidden_roles],
+                 key=roles_key, on_change=set_hidden_roles, args=(roles_key, present_roles),
+                 help='Switch roles on or off in the comparison chart. The legend groups the lines by role, and roles switched off '
+                      'are named in the chart\'s summary line, so a saved image shows the choice. The Excel file, Setpoint vs measured '
+                      'and the selected profile\'s chart are not affected.')
     export_interval = e1.selectbox('Export interval', list(EXPORT_INTERVALS), index=list(EXPORT_INTERVALS).index('1 min'), key='export_interval',
                                    help='Exports the visible profiles. Sheet "Cook profiles": Timestamp, then one column per visible profile. Profiles without clock times go on a second sheet, "Elapsed time". Readings are averaged within each interval. Trimming and time offsets are applied; smoothing is not.')
     # The file is built only when the button is clicked, not on every click elsewhere on the page.

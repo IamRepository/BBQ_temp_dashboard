@@ -1,12 +1,13 @@
-# Cook Profile Dashboard v1.7.5
+# Cook Profile Dashboard v1.7.6
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
 
-**What's new in 1.7.5:** a new Ambient role for the air right next to the meat (for example the Typhur ambient sensor), separate from Grate (a sensor fixed at grate level). Since 1.7.0: roles for multi-device cooks, a Check the import step, colour by probe, a Line style choice per profile, a logo, up to five named target lines, a chart text size, and Excel export names the Brisket Tenderness Analyzer reads correctly. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
+**What's new in 1.7.6:** switch roles on and off in the comparison chart with "Roles shown" under the chart; the legend is grouped by role, and hidden roles are named in the chart's summary line, so saved images show the choice. Since 1.7.0: roles for multi-device cooks (including Ambient), a Check the import step, colour by probe, a Line style choice per profile, a logo, up to five named target lines, a chart text size, and Excel export names the Brisket Tenderness Analyzer reads correctly. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Features
 - Import one or more CSV, XLSX or XLS files, then check the import: tick the columns to add, and set each one's role and probe before anything is added. Each temperature column becomes a profile named "<probe> - <role>". Day-first (03/10/2026) and year-first (2026-10-03) dates, Excel dates, elapsed-time columns, zone names and UTC offsets, the clock change, probe dropouts and Fahrenheit are handled, and an Import notes panel reports what was found and skipped.
 - Page layout, top to bottom: overview cards; one card with Profile details (two compact rows and a status line), the comparison chart and the Excel export; Setpoint vs measured; then the selected profile's statistics and chart.
+- Roles shown (under the comparison chart): switch whole roles on or off, for example hide every Meat line. The legend is grouped by role with a heading per role, and hidden roles are named in the chart's summary line ("hidden: Meat"), on screen and in saved images.
 - Overlay profiles on one chart, aligned by start, peak, end or clock time, with optional smoothing (1, 5 or 10 min). Long cooks are drawn with at most 4,000 points per line, keeping each stretch's lowest and highest reading so short spikes still show; statistics, the setpoint comparison and the export use every reading.
 - Roles: Meat, Point, Flat, Ambient, Grate, Pit, Hold, Setpoint and Other, suggested from the column name (for example Typhur Ambient as Ambient, Typhur Meat as Meat, the Weber cavity as Pit). Ambient is the air right next to the meat wherever the probe sits; Grate is a sensor fixed at grate level; Pit is the cooker's own thermostat. Profiles of one probe share a colour. Every line is solid unless a Line style is chosen in Profile details (Solid, Dashed, Dotted, Dash-dot, Long dash); a setpoint starts dashed. With more than four lines the legend moves beside the chart.
 - BBQ Chart to Data files (Timestamp, Ambient and Meat temperature) import directly; a "Start time source" column saying "typed" is flagged in Import notes and the status line.
@@ -54,7 +55,7 @@ Run before every release, from the repository root:
 ```bash
 python -m unittest discover -s tests -v
 ```
-There are 83 tests. `tests/test_import.py` checks file import against the example files in `tests/data` (made by `tests/make_fixtures.py`, no real cook data), plus the export, chart thinning on a made-up 18-hour cook, trimming and the pinned versions. `tests/test_app.py` loads every example file into the page and exercises the main interactions, including Trim all profiles together. Each fixed issue has its own test, named after its audit number (H1, M6, L9 and so on).
+There are 85 tests. `tests/test_import.py` checks file import against the example files in `tests/data` (made by `tests/make_fixtures.py`, no real cook data), plus the export, chart thinning on a made-up 18-hour cook, trimming and the pinned versions. `tests/test_app.py` loads every example file into the page and exercises the main interactions, including Trim all profiles together. Each fixed issue has its own test, named after its audit number (H1, M6, L9 and so on).
 
 ## Input assumptions
 - Temperatures are Celsius unless the column header says °F, (F) or Fahrenheit; those are converted.
