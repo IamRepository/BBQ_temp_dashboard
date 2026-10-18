@@ -256,16 +256,55 @@ class V1610DefaultsAndTarget(unittest.TestCase):
 
     def test_target_line_on_both_profile_charts(self):
         at = self.at
-        self.assertFalse(any(f['layout'].get('shapes') for f, _ in self.charts()))   # off by default
-        at.toggle(key='target_line_toggle').set_value(True).run()
-        self.assertEqual(at.number_input(key='target_value').value, 200.0)
-        at.number_input(key='target_value').set_value(185).run()
+        self.assertFalse(any(f['layout'].get('shapes') for f, _ in self.charts()))   # none by default
+        at.number_input(key='target_count').set_value(1).run()
+        self.assertEqual(at.number_input(key='target_value_0').value, 200.0)
+        at.number_input(key='target_value_0').set_value(185).run()
         self.assertEqual(problems(at), [])
         figures = [f for f, _ in self.charts()]
         for figure in (figures[0], figures[-1]):                                  # comparison and selected profile
             shape = figure['layout']['shapes'][0]
             self.assertEqual((shape['y0'], shape['y1'], shape['line']['dash']), (185, 185, 'dot'))
             self.assertIn('Target 185 °C', [a['text'] for a in figure['layout']['annotations']])
+
+
+class V173TargetLines(unittest.TestCase):
+    def setUp(self):
+        self.profiles, _ = load_uploaded_files([Upload(DATA / 'ok_device_cest.csv'), Upload(DATA / 'h5_fixed_setpoint.csv')])
+        self.at = page(self.profiles)
+
+    def layout(self, index=0):
+        import json
+        return json.loads(self.at.get('plotly_chart')[index].proto.spec)['layout']
+
+    def test_several_named_target_lines(self):
+        at = self.at
+        at.number_input(key='target_count').set_value(3).run()
+        at.text_input(key='target_name_0').set_value('Pit')
+        at.number_input(key='target_value_0').set_value(120)
+        at.text_input(key='target_name_1').set_value('Meat <done>')
+        at.number_input(key='target_value_1').set_value(95)
+        at.text_input(key='target_name_2').set_value('')                         # empty name: numbered
+        at.run()
+        self.assertEqual(problems(at), [])
+        for index in (0, -1):
+            layout = self.layout(index)
+            self.assertEqual(sorted(s['y0'] for s in layout['shapes']), [95, 120, 120])   # third keeps its default 120
+            labels = [a['text'] for a in layout['annotations']]
+            for label in ('Pit 120 °C', 'Meat &lt;done&gt; 95 °C', 'Target 3 120 °C'):
+                self.assertIn(label, labels)
+
+    def test_fewer_lines_after_lowering_the_count(self):
+        at = self.at
+        at.number_input(key='target_count').set_value(4).run()
+        self.assertEqual(len(self.layout()['shapes']), 4)
+        at.number_input(key='target_count').set_value(2).run()
+        self.assertEqual(len(self.layout()['shapes']), 2)
+        at.number_input(key='target_count').set_value(0).run()
+        self.assertFalse(self.layout().get('shapes'))
+
+    def test_at_most_five(self):
+        self.assertEqual(self.at.number_input(key='target_count').max, 5)
 
 
 class V170ImportReview(unittest.TestCase):

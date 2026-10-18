@@ -15,6 +15,8 @@ import re
 
 # Logo: the Material 'monitoring' icon (a rising chart), in the same style as BBQ Chart to Data's 'dashboard' icon.
 LOGO = 'monitoring'
+MAX_TARGETS = 5
+TARGET_DEFAULTS = [('Target', 200.0), ('Target 2', 95.0), ('Target 3', 120.0), ('Target 4', 150.0), ('Target 5', 80.0)]
 st.set_page_config(page_title='Cook Profile Dashboard', page_icon=f':material/{LOGO}:', layout='wide', initial_sidebar_state='expanded')
 
 if 'profiles' not in st.session_state:
@@ -205,11 +207,22 @@ with st.sidebar:
     grid = st.toggle('Grid lines', True, key='grid_lines_toggle')
     legend = st.toggle('Legend', True, key='legend_toggle')
     width = st.number_input('Line width', min_value=1.0, max_value=5.0, value=3.5, step=0.5, format='%.1f', key='line_width_input')
-    show_target = st.toggle('Target line', False, key='target_line_toggle',
-                            help='A straight line across the chart at the temperature the cook aimed for, for example 200 °C. '
-                                 'Drawn on the comparison chart and the selected profile\'s chart, and included in saved chart images.')
-    target = st.number_input('Target temperature (°C)', min_value=-50.0, max_value=500.0, value=200.0, step=1.0, format='%.0f',
-                             key='target_value') if show_target else None
+    target_count = st.number_input('Target lines', min_value=0, max_value=MAX_TARGETS, value=0, step=1, key='target_count',
+                                   help='Straight lines across the chart at temperatures you aimed for, each with its own name, '
+                                        'for example "Pit" at 120 °C and "Meat" at 95 °C. Drawn on the comparison chart and the '
+                                        'selected profile\'s chart, and included in saved chart images. 0 = no target lines.')
+    targets = []
+    if target_count:
+        h1, h2 = st.columns([1.55, 1], gap='small')
+        h1.markdown('<div class="target-head">Name</div>', unsafe_allow_html=True)
+        h2.markdown('<div class="target-head">°C</div>', unsafe_allow_html=True)
+    for i in range(int(target_count)):
+        n1, n2 = st.columns([1.55, 1], gap='small', vertical_alignment='center')
+        name = n1.text_input(f'Target {i + 1} name', TARGET_DEFAULTS[i][0], key=f'target_name_{i}', label_visibility='collapsed',
+                             placeholder=f'Target {i + 1}')
+        value = n2.number_input(f'Target {i + 1} temperature (°C)', min_value=-50.0, max_value=500.0, value=TARGET_DEFAULTS[i][1],
+                                step=1.0, format='%.0f', key=f'target_value_{i}', label_visibility='collapsed')
+        targets.append((name.strip() or f'Target {i + 1}', value))
     image_format = st.segmented_control('Image download', ['PNG', 'JPEG'], default='JPEG', key='image_format_selector',
                                         help='File type saved by the camera icon in the top right of each chart.') or 'JPEG'
     if st.session_state.get('import_messages'):
@@ -321,6 +334,7 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 .card-title {{font-size:1.15rem;font-weight:700;color:var(--text)}}
 .card-note {{font-size:.82rem;color:var(--muted);margin-top:.15rem}}
 .card-title.compact {{font-size:1rem;margin-bottom:-.35rem}}
+.target-head {{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:-.35rem}}
 .import-head {{font-size:.72rem;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin-bottom:-.6rem}}
 .import-column {{font-size:.9rem;color:var(--text);line-height:1.25}}
 .import-column span {{color:var(--muted);margin-right:.35rem}}
@@ -382,7 +396,7 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 hr {{border-color:var(--border)!important;}}
 {tint_css}</style>''', unsafe_allow_html=True)
 
-settings = {'alignment': alignment, 'theme': theme, 'grid': grid, 'legend': legend, 'width': width, 'smoothing_minutes': smoothing_minutes, 'target': target}
+settings = {'alignment': alignment, 'theme': theme, 'grid': grid, 'legend': legend, 'width': width, 'smoothing_minutes': smoothing_minutes, 'targets': targets}
 st.markdown(f'<div class="page-kicker">Cook profile studio</div><div class="page-title"><span class="cp-logo">{LOGO}</span>Cook Profile Dashboard</div><div class="page-version">Version {VERSION}</div><div class="page-note">Compare uploaded temperature profiles in a clean, consistent workspace. All temperatures are in degrees Celsius.</div>', unsafe_allow_html=True)
 
 pending = st.session_state.get('pending_import')

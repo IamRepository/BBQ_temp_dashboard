@@ -1,3 +1,5 @@
+import html
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -100,16 +102,19 @@ def _layout(fig, settings, title, height=None, x_title=None, y_title='Temperatur
 
 
 def _target(fig, settings):
-    """The target line: a dotted line across the chart at the temperature the cook aimed for, labelled at the left.
-    In the page's text colour, so it never looks like one of the profiles."""
-    value = settings.get('target')
-    if value is None:
-        return fig
+    """Target lines: dotted lines across the chart at temperatures the cook aimed for, each labelled with its own
+    name and temperature ("Pit 120 °C"). In the page's text colour, so they never look like one of the profiles.
+    Labels alternate between the left and right end, so two targets close together stay readable."""
+    targets = list(settings.get('targets') or [])
+    if not targets and settings.get('target') is not None:      # single target, as in v1.6.10
+        targets = [('Target', settings['target'])]
     colors = _palette(settings['theme'])
-    fig.add_hline(y=value, line={'color': colors['text'], 'width': 2, 'dash': 'dot'}, layer='above',
-                  annotation={'text': f'Target {value:g} °C', 'font': {'color': colors['text'], 'size': 12},
-                              'bgcolor': colors['bg'], 'borderpad': 2},
-                  annotation_position='top left')
+    for i, (name, value) in enumerate(targets):
+        label = html.escape(f'{name} {value:g} °C')
+        fig.add_hline(y=value, line={'color': colors['text'], 'width': 2, 'dash': 'dot'}, layer='above',
+                      annotation={'text': label, 'font': {'color': colors['text'], 'size': 12},
+                                  'bgcolor': colors['bg'], 'borderpad': 2},
+                      annotation_position='top left' if i % 2 == 0 else 'top right')
     return fig
 
 

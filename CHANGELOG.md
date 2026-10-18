@@ -2,6 +2,24 @@
 
 All releases of the Cook Profile Dashboard, newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.7.3] - 2026-10-19
+
+More target lines, each with its own name. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Changed
+- **Target lines.** The "Target line" switch under Chart options is replaced by a "Target lines" number, from 0 (none, the default) to 5.
+  - For each line there is a Name and a temperature (°C).
+  - Lines start as "Target" 200 °C, "Target 2" 95 °C, "Target 3" 120 °C, "Target 4" 150 °C and "Target 5" 80 °C; change them as needed.
+  - Each line is labelled on the chart with its name and temperature, for example "Pit 120 °C" and "Meat done 95 °C". An empty name shows as "Target 1", "Target 2" and so on.
+  - Labels alternate between the left and right end of the chart, so two targets close together stay readable.
+  - As before: dotted, in the text colour, on the comparison chart and the selected profile's chart, included in saved images, and the temperature axis stretches to include them.
+
+### Added
+- 3 more regression tests (79 in all): several named lines with an empty name and a special character, lowering the number of lines, and the limit of five.
+
+### Upgrade note
+- Reboot the app on Streamlit Community Cloud after deploying (Manage app, three dots, Reboot app): `chart_builder.py` changed.
+
 ## [1.7.2] - 2026-10-18
 
 Logo. Commit [`0e90d49`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/0e90d49).
@@ -404,6 +422,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.7.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/0e90d49...COMMIT
 [1.7.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/c0b7cb5...0e90d49
 [1.7.1]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/aae9a5c...c0b7cb5
 [1.7.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/aaecc53...aae9a5c

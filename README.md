@@ -1,8 +1,8 @@
-# Cook Profile Dashboard v1.7.2
+# Cook Profile Dashboard v1.7.3
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
 
-**What's new in 1.7.2:** a logo: a rising-chart icon in the browser tab, beside the sidebar name and in front of the title, in the same style as BBQ Chart to Data. Since 1.7.0: roles for multi-device cooks, a Check the import step, colour by probe, a Line style choice per profile, and Excel export names the Brisket Tenderness Analyzer reads correctly. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
+**What's new in 1.7.3:** up to five target lines, each with its own name and temperature (for example "Pit 120 °C" and "Meat 95 °C"). Since 1.7.0: roles for multi-device cooks, a Check the import step, colour by probe, a Line style choice per profile, a logo, and Excel export names the Brisket Tenderness Analyzer reads correctly. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Features
 - Import one or more CSV, XLSX or XLS files, then check the import: tick the columns to add, and set each one's role and probe before anything is added. Each temperature column becomes a profile named "<probe> - <role>". Day-first (03/10/2026) and year-first (2026-10-03) dates, Excel dates, elapsed-time columns, zone names and UTC offsets, the clock change, probe dropouts and Fahrenheit are handled, and an Import notes panel reports what was found and skipped.
@@ -14,7 +14,7 @@ Streamlit dashboard for comparing uploaded cook temperature profiles in degrees 
 - Trim all profiles together: one slider sets the same time window (clock time, or hours from the start for files without clock times) for every loaded profile.
 - Setpoint vs measured: how closely a probe followed the cooker's set temperature, with time within a chosen band.
 - Light and dark themes (dark by default); chart images as JPEG (default) or PNG from each chart's camera icon; line width 3.5 by default.
-- Target line: a dotted line across the comparison and selected-profile charts at a chosen temperature (Chart options, Target line), labelled for example "Target 200 °C" and included in saved images. The comparison and single-profile charts are 16:9 at any window width and are saved at 3200 × 1800 pixels.
+- Target lines: up to five dotted lines across the comparison and selected-profile charts (Chart options, Target lines), each with its own name and temperature, labelled for example "Pit 120 °C" and included in saved images. The comparison and single-profile charts are 16:9 at any window width and are saved at 3200 × 1800 pixels.
 - Excel export of the visible data, with the trim and time offsets applied. The file is built when you click Download, so it never slows down the rest of the page. Profiles with clock times share one sheet; elapsed-only profiles go on a second sheet.
 - Files already imported are skipped, and line colours are taken from a palette checked for colour-blind readers, so each profile has its own colour.
 
@@ -53,7 +53,7 @@ Run before every release, from the repository root:
 ```bash
 python -m unittest discover -s tests -v
 ```
-There are 76 tests. `tests/test_import.py` checks file import against the example files in `tests/data` (made by `tests/make_fixtures.py`, no real cook data), plus the export, chart thinning on a made-up 18-hour cook, trimming and the pinned versions. `tests/test_app.py` loads every example file into the page and exercises the main interactions, including Trim all profiles together. Each fixed issue has its own test, named after its audit number (H1, M6, L9 and so on).
+There are 79 tests. `tests/test_import.py` checks file import against the example files in `tests/data` (made by `tests/make_fixtures.py`, no real cook data), plus the export, chart thinning on a made-up 18-hour cook, trimming and the pinned versions. `tests/test_app.py` loads every example file into the page and exercises the main interactions, including Trim all profiles together. Each fixed issue has its own test, named after its audit number (H1, M6, L9 and so on).
 
 ## Input assumptions
 - Temperatures are Celsius unless the column header says °F, (F) or Fahrenheit; those are converted.
