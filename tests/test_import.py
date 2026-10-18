@@ -334,10 +334,17 @@ class V170Roles(unittest.TestCase):
     line style by role, Analyzer-compatible export names, typed start times flagged."""
 
     def test_default_roles_from_column_names(self):
-        expected = {'Ambient temperature': 'Grate', 'Meat temperature': 'Meat', 'Internal': 'Meat', 'cavity temperature': 'Pit',
+        expected = {'Ambient temperature': 'Ambient', 'Grate probe': 'Grate', 'Meat temperature': 'Meat', 'Internal': 'Meat', 'cavity temperature': 'Pit',
                     'Probe 1': 'Meat', 'Setpoint': 'Setpoint', 'Set point': 'Setpoint', 'Target': 'Setpoint', 'Pit temp': 'Pit',
                     'Point': 'Point', 'Flat probe': 'Flat', 'Hold probe': 'Hold', 'Humidity sensor': 'Other'}
         self.assertEqual({c: default_role(c) for c in expected}, expected)
+
+    def test_ambient_and_grate_are_separate_roles(self):   # v1.7.5
+        self.assertEqual(default_role('Ambient temperature'), 'Ambient')       # Typhur sensor in the probe handle, at the meat
+        self.assertEqual(default_role('Grate'), 'Grate')                       # fixed at grate level
+        self.assertEqual(ROLES.index('Ambient') + 1, ROLES.index('Grate'))
+        for name in ('Typhur probe 1 - Ambient', 'Weber grill - Grate'):
+            self.assertEqual(analyzer_role(export_name(name, name.split(' - ')[1])), 'Cook Grate')   # the Analyzer has no ambient role
 
     def test_probe_labels(self):
         self.assertEqual(default_probe('Smoque_XL.csv', 'Probe 1'), 'Smoque_XL Probe 1')
@@ -376,7 +383,7 @@ class V170Roles(unittest.TestCase):
     def test_lines_are_solid_unless_chosen(self):   # v1.7.1: no automatic dashes; style chosen per profile
         settings = {'width': 3.5}
         profile = load('c2d_typhur_probe_1.csv')[0][0]
-        for role in ('Meat', 'Point', 'Grate', 'Pit', 'Hold', 'Other'):
+        for role in ('Meat', 'Point', 'Ambient', 'Grate', 'Pit', 'Hold', 'Other'):
             profile.role, profile.is_setpoint = role, False
             self.assertIsNone(_line(profile, settings).get('dash'), role)
         profile.role, profile.is_setpoint = 'Setpoint', True
@@ -397,7 +404,7 @@ class V170Roles(unittest.TestCase):
 
     def test_merged_export_reimports_with_the_same_roles(self):
         profiles, _ = load('c2d_typhur_probe_1.csv', 'c2d_typhur_probe_2.csv', 'ok_device_cest.csv')
-        roles = {'Ambient temperature': 'Grate', 'Meat temperature': 'Point', 'cavity temperature': 'Pit', 'Probe 1': 'Flat', 'Probe 2': 'Meat'}
+        roles = {'Ambient temperature': 'Ambient', 'Meat temperature': 'Point', 'cavity temperature': 'Pit', 'Probe 1': 'Flat', 'Probe 2': 'Meat'}
         for p in profiles:
             p.role, p.probe = roles[p.channel], default_probe(p.source_file, p.channel)
             p.name = profile_name(p.probe, p.role)

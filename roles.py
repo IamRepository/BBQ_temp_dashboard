@@ -11,13 +11,15 @@ role for each column from words in its name (pit_engine.classify_columns, Analyz
 import re
 from pathlib import Path
 
-ROLES = ['Meat', 'Point', 'Flat', 'Grate', 'Pit', 'Hold', 'Setpoint', 'Other']
+ROLES = ['Meat', 'Point', 'Flat', 'Ambient', 'Grate', 'Pit', 'Hold', 'Setpoint', 'Other']
 
 ROLE_HELP = {
     'Meat': 'A meat probe, place not given (choose Point or Flat for brisket).',
     'Point': 'Meat probe in the brisket point.',
     'Flat': 'Meat probe in the brisket flat.',
-    'Grate': 'Air temperature at grate level, for example a Typhur Ambient reading.',
+    'Ambient': 'Air right next to the meat, wherever the probe sits: for example the Typhur ambient sensor in the probe handle, '
+               'which on a whole chicken can be 20-25 cm above the grate.',
+    'Grate': 'A sensor fixed at grate level, reading the air the grate sees.',
     'Pit': "The cooker's own controller or cavity reading, for example the Weber Smoque XL.",
     'Hold': 'Air temperature in the holding oven or cabinet.',
     'Setpoint': 'The temperature the cooker was set to hold. Starts dashed, never smoothed, and used in Setpoint vs measured.',
@@ -46,7 +48,8 @@ _DEFAULTS = [
     ('Point', r'point'),
     ('Flat', r'flat'),
     ('Hold', r'\bhold|holding|environment'),
-    ('Grate', r'grate|ambient'),
+    ('Ambient', r'ambient'),
+    ('Grate', r'grate'),
     ('Pit', r'cavity|controller|\bpit\b|\bpid\b|smoker|chamber'),
     ('Meat', r'meat|internal|probe|food|brisket|core|kern'),
 ]
@@ -107,10 +110,11 @@ _ANALYZER_RULES = [
 ]
 
 # What the Analyzer should make of each dashboard role (None: no Analyzer role, left to the user there).
-ANALYZER_ROLE = {'Point': A_POINT, 'Flat': A_FLAT, 'Meat': A_FLAT, 'Grate': A_GRATE, 'Pit': A_PID, 'Hold': A_HOLD,
+# The Analyzer has no ambient role; "ambient" is one of its grate words, so Ambient is read as Cook Grate.
+ANALYZER_ROLE = {'Point': A_POINT, 'Flat': A_FLAT, 'Meat': A_FLAT, 'Ambient': A_GRATE, 'Grate': A_GRATE, 'Pit': A_PID, 'Hold': A_HOLD,
                  'Setpoint': None, 'Other': None, '': None}
 # Word added to an export name when it is needed for the Analyzer to see the role.
-_ROLE_WORD = {'Point': 'Point', 'Flat': 'Flat', 'Meat': 'Meat', 'Grate': 'Grate', 'Pit': 'Pit (PID)', 'Hold': 'Hold probe'}
+_ROLE_WORD = {'Point': 'Point', 'Flat': 'Flat', 'Meat': 'Meat', 'Ambient': 'Ambient', 'Grate': 'Grate', 'Pit': 'Pit (PID)', 'Hold': 'Hold probe'}
 _MEAT_ROLES = (A_POINT, A_FLAT)
 
 

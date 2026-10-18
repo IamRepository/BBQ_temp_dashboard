@@ -2,6 +2,23 @@
 
 All releases of the Cook Profile Dashboard, newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.7.5] - 2026-10-19
+
+Ambient role. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Added
+- **New role: Ambient,** for the air right next to the meat, wherever the probe sits. Example: the Typhur ambient sensor in the probe handle, which on a whole chicken can be 20-25 cm above the grate and read differently from both the grate and the pit thermostat.
+  - It sits next to Grate in the role lists.
+  - The air roles are now:
+    - **Pit:** the cooker's own thermostat or controller.
+    - **Grate:** a sensor fixed at grate level.
+    - **Ambient:** air at the meat.
+- 1 more regression test (83 in all): Ambient and Grate are separate roles, and both export as the Analyzer's Cook Grate.
+
+### Changed
+- **Typhur columns.** "Ambient temperature" columns (as BBQ Chart to Data writes them) are now suggested as Ambient at import, not Grate. Columns with "grate" in the name are still suggested as Grate. Profiles already marked Grate keep that role.
+- **In the Excel export,** Ambient profiles keep "Ambient" in their names. The Brisket Tenderness Analyzer has no ambient role and reads "ambient" as its Cook Grate role, the closest it has.
+
 ## [1.7.4] - 2026-10-19
 
 Chart text size, and target labels on the left. Commit [`d8e26da`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/d8e26da).
@@ -440,6 +457,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.7.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d8e26da...COMMIT
 [1.7.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/3fef10d...d8e26da
 [1.7.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/0e90d49...3fef10d
 [1.7.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/c0b7cb5...0e90d49

@@ -324,10 +324,10 @@ class V170ImportReview(unittest.TestCase):
         self.assertTrue(any('Check the import' in m.value for m in at.markdown))
         self.assertEqual(at.session_state['profiles'], [])                       # nothing added yet
         self.assertEqual(len([c for c in at.checkbox if c.key and c.key.startswith('imp_test_')]), 7)
-        self.assertEqual(at.selectbox(key='imp_test_0_role').value, 'Grate')
+        self.assertEqual(at.selectbox(key='imp_test_0_role').value, 'Ambient')
         self.assertEqual(at.text_input(key='imp_test_5_probe').value, 'ok_device_cest Probe 1')
         preview = next(c.value for c in at.caption if c.value.startswith('Will be added as'))
-        for name in ('c2d_typhur_probe_1 - Grate', 'c2d_typhur_probe_1 - Meat', 'c2d_typhur_probe_2 - Grate', 'ok_device_cest - Pit',
+        for name in ('c2d_typhur_probe_1 - Ambient', 'c2d_typhur_probe_1 - Meat', 'c2d_typhur_probe_2 - Ambient', 'ok_device_cest - Pit',
                      'ok_device_cest Probe 1 - Meat', 'ok_device_cest Probe 2 - Meat'):
             self.assertIn(name, preview)
 
@@ -340,11 +340,11 @@ class V170ImportReview(unittest.TestCase):
         self.assertNotIn('pending_import', at.session_state)
         self.assertEqual(len(profiles), 7)
         by_name = {p.name: p for p in profiles}
-        self.assertEqual(by_name['c2d_typhur_probe_1 - Grate'].color, by_name['c2d_typhur_probe_1 - Meat'].color)   # one probe, one colour
+        self.assertEqual(by_name['c2d_typhur_probe_1 - Ambient'].color, by_name['c2d_typhur_probe_1 - Meat'].color)   # one probe, one colour
         self.assertEqual(len({p.color for p in profiles}), 5)                                                     # 5 probes
         self.assertTrue(by_name['ok_device_cest - Pit'].role == 'Pit' and not by_name['ok_device_cest - Pit'].is_setpoint)
         traces = {t['name']: t.get('line', {}).get('dash') for t in json.loads(at.get('plotly_chart')[0].proto.spec)['data']}
-        self.assertIsNone(traces['c2d_typhur_probe_1 - Grate'])     # v1.7.1: solid unless a style is chosen
+        self.assertIsNone(traces['c2d_typhur_probe_1 - Ambient'])     # v1.7.1: solid unless a style is chosen
         self.assertIsNone(traces['ok_device_cest - Pit'])
         self.assertIsNone(traces['c2d_typhur_probe_1 - Meat'])
 
@@ -358,7 +358,7 @@ class V170ImportReview(unittest.TestCase):
         names = [p.name for p in at.session_state['profiles']]
         self.assertEqual(len(names), 6)
         self.assertIn('Typhur 1 - Point', names)
-        self.assertNotIn('c2d_typhur_probe_1 - Grate', names)
+        self.assertNotIn('c2d_typhur_probe_1 - Ambient', names)
         self.assertTrue(any('1 column(s) left out' in m for m in at.session_state['import_messages']))
 
     def test_cancel_adds_nothing(self):
