@@ -380,3 +380,14 @@ class V171LineStyle(unittest.TestCase):
         self.assertEqual(self.dashes()[name + ' (setpoint)'], 'dash')
         at.selectbox(key=f'edit_{setpoint.profile_id}_style').set_value('Solid').run()
         self.assertIsNone(self.dashes()[name + ' (setpoint)'])
+
+
+class V172Logo(unittest.TestCase):
+    def test_monitoring_logo_in_sidebar_and_title(self):
+        at = page([])
+        logos = [m.value for m in list(at.markdown) + list(at.sidebar.markdown) if 'cp-logo' in m.value]
+        self.assertTrue(any('page-title' in m and '>monitoring</span>Cook Profile Dashboard' in m for m in logos), logos)
+        self.assertTrue(any('side-brand' in m and '>monitoring</span>Cook Profile' in m for m in logos), logos)
+        source = (Path(__file__).resolve().parent.parent / 'app.py').read_text()
+        self.assertIn("LOGO = 'monitoring'", source)
+        self.assertIn("page_icon=f':material/{LOGO}:'", source)

@@ -1,8 +1,8 @@
-# Cook Profile Dashboard v1.7.1
+# Cook Profile Dashboard v1.7.2
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
 
-**What's new in 1.7.1:** every line is solid unless you choose otherwise: a new Line style choice per profile (Solid, Dashed, Dotted, Dash-dot, Long dash) sits next to Color. Since 1.7.0: roles for multi-device cooks, a Check the import step, colour by probe, and Excel export names the Brisket Tenderness Analyzer reads correctly. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
+**What's new in 1.7.2:** a logo: a rising-chart icon in the browser tab, beside the sidebar name and in front of the title, in the same style as BBQ Chart to Data. Since 1.7.0: roles for multi-device cooks, a Check the import step, colour by probe, a Line style choice per profile, and Excel export names the Brisket Tenderness Analyzer reads correctly. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Features
 - Import one or more CSV, XLSX or XLS files, then check the import: tick the columns to add, and set each one's role and probe before anything is added. Each temperature column becomes a profile named "<probe> - <role>". Day-first (03/10/2026) and year-first (2026-10-03) dates, Excel dates, elapsed-time columns, zone names and UTC offsets, the clock change, probe dropouts and Fahrenheit are handled, and an Import notes panel reports what was found and skipped.
@@ -53,7 +53,7 @@ Run before every release, from the repository root:
 ```bash
 python -m unittest discover -s tests -v
 ```
-There are 75 tests. `tests/test_import.py` checks file import against the example files in `tests/data` (made by `tests/make_fixtures.py`, no real cook data), plus the export, chart thinning on a made-up 18-hour cook, trimming and the pinned versions. `tests/test_app.py` loads every example file into the page and exercises the main interactions, including Trim all profiles together. Each fixed issue has its own test, named after its audit number (H1, M6, L9 and so on).
+There are 76 tests. `tests/test_import.py` checks file import against the example files in `tests/data` (made by `tests/make_fixtures.py`, no real cook data), plus the export, chart thinning on a made-up 18-hour cook, trimming and the pinned versions. `tests/test_app.py` loads every example file into the page and exercises the main interactions, including Trim all profiles together. Each fixed issue has its own test, named after its audit number (H1, M6, L9 and so on).
 
 ## Input assumptions
 - Temperatures are Celsius unless the column header says °F, (F) or Fahrenheit; those are converted.

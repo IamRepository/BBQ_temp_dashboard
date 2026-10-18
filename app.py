@@ -13,7 +13,9 @@ from export_utils import EXPORT_INTERVALS, export_filename, profiles_to_excel
 from version import VERSION
 import re
 
-st.set_page_config(page_title='Cook Profile Dashboard', page_icon='CP', layout='wide', initial_sidebar_state='expanded')
+# Logo: the Material 'monitoring' icon (a rising chart), in the same style as BBQ Chart to Data's 'dashboard' icon.
+LOGO = 'monitoring'
+st.set_page_config(page_title='Cook Profile Dashboard', page_icon=f':material/{LOGO}:', layout='wide', initial_sidebar_state='expanded')
 
 if 'profiles' not in st.session_state:
     st.session_state.profiles = []
@@ -165,7 +167,7 @@ def rename_profile(profile_id, widget_key):
         st.session_state.rename_error = None
 
 with st.sidebar:
-    st.markdown('<div class="side-brand">Cook Profile</div><div class="side-sub">Temperature dashboard</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="side-brand"><span class="cp-logo">{LOGO}</span>Cook Profile</div><div class="side-sub">Temperature dashboard</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-label" style="margin-top:.3rem">DATA</div>', unsafe_allow_html=True)
     files = st.file_uploader('Upload CSV or Excel files', type=['csv', 'xlsx', 'xls'], accept_multiple_files=True, key='uploaded_profile_files')
     keep = st.checkbox('Keep existing profiles', True, key='keep_existing_profiles')
@@ -307,11 +309,13 @@ st.markdown(f'''<style>
 [data-testid="stSidebarHeader"] {{position:absolute;top:.6rem;right:.5rem;height:auto;width:auto;padding:0;margin:0;z-index:5;}}
 .block-container {{max-width:1600px; padding-top:4.4rem; padding-bottom:3rem;}}
 h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
-.side-brand {{font-size:1.15rem;font-weight:750;color:var(--text);letter-spacing:-.02em}}
+.side-brand {{font-size:1.15rem;font-weight:750;color:var(--text);letter-spacing:-.02em;display:flex;align-items:center;gap:.4rem}}
+.cp-logo {{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;font-size:1.35rem;line-height:1;letter-spacing:normal;text-transform:none;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-feature-settings:'liga';color:inherit}}
+.page-title .cp-logo {{font-size:2.3rem}}
 .side-sub {{font-size:.78rem;color:var(--muted);margin-bottom:.2rem}}
 .section-label {{font-size:.68rem;font-weight:750;letter-spacing:.12em;color:var(--muted);margin:1.5rem 0 .6rem}}
 .page-kicker {{font-size:.72rem;font-weight:750;letter-spacing:.12em;color:var(--kicker);text-transform:uppercase}}
-.page-title {{font-size:2rem;font-weight:760;letter-spacing:-.035em;color:var(--text);margin-top:.16rem}}
+.page-title {{font-size:2rem;font-weight:760;letter-spacing:-.035em;color:var(--text);margin-top:.16rem;display:flex;align-items:center;gap:.5rem}}
 .page-version {{font-size:.8rem;font-weight:600;color:var(--muted);margin-top:.2rem}}
 .page-note {{font-size:.95rem;color:var(--muted);margin:.3rem 0 1.6rem}}
 .card-title {{font-size:1.15rem;font-weight:700;color:var(--text)}}
@@ -379,7 +383,7 @@ hr {{border-color:var(--border)!important;}}
 {tint_css}</style>''', unsafe_allow_html=True)
 
 settings = {'alignment': alignment, 'theme': theme, 'grid': grid, 'legend': legend, 'width': width, 'smoothing_minutes': smoothing_minutes, 'target': target}
-st.markdown(f'<div class="page-kicker">Cook profile studio</div><div class="page-title">Cook Profile Dashboard</div><div class="page-version">Version {VERSION}</div><div class="page-note">Compare uploaded temperature profiles in a clean, consistent workspace. All temperatures are in degrees Celsius.</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="page-kicker">Cook profile studio</div><div class="page-title"><span class="cp-logo">{LOGO}</span>Cook Profile Dashboard</div><div class="page-version">Version {VERSION}</div><div class="page-note">Compare uploaded temperature profiles in a clean, consistent workspace. All temperatures are in degrees Celsius.</div>', unsafe_allow_html=True)
 
 pending = st.session_state.get('pending_import')
 if pending:
