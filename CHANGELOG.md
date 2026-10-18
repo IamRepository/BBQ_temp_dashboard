@@ -4,7 +4,7 @@ All releases of the Cook Profile Dashboard, newest first. Dates are when each re
 
 ## [1.7.2] - 2026-10-18
 
-Logo. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+Logo. Commit [`0e90d49`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/0e90d49).
 
 ### Added
 - **A logo in the style of BBQ Chart to Data.** That app uses Google's Material "dashboard" icon; this one uses the Material "monitoring" icon (a rising chart), chosen by the user from six options on 18 October.
@@ -404,7 +404,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
-[1.7.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/c0b7cb5...COMMIT
+[1.7.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/c0b7cb5...0e90d49
 [1.7.1]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/aae9a5c...c0b7cb5
 [1.7.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/aaecc53...aae9a5c
 [1.6.10]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/6f20a3d...aaecc53
