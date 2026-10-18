@@ -4,7 +4,7 @@ All releases of the Cook Profile Dashboard, newest first. Dates are when each re
 
 ## [1.7.6] - 2026-10-19
 
-Switch roles on and off in the comparison chart. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+Switch roles on and off in the comparison chart. Commit [`2ea9b11`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/2ea9b11).
 
 ### Added
 - **"Roles shown" under the comparison chart.** One button per role present (for example Meat, Ambient, Pit) switches every line of that role on or off.
@@ -478,7 +478,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
-[1.7.6]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/0f4db45...COMMIT
+[1.7.6]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/0f4db45...2ea9b11
 [1.7.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d8e26da...0f4db45
 [1.7.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/3fef10d...d8e26da
 [1.7.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/0e90d49...3fef10d
