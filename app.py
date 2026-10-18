@@ -7,7 +7,7 @@ import uuid
 
 from profile_loader import COLORS, load_uploaded_files
 from roles import LINE_STYLES, ROLES, ROLE_HELP, line_dash, line_style_name, default_probe, default_role, probe_colours, profile_name, unique_names
-from chart_builder import comparison, single, deviation, without_clock
+from chart_builder import TEXT_SIZES, comparison, single, deviation, without_clock
 from analysis import compare
 from export_utils import EXPORT_INTERVALS, export_filename, profiles_to_excel
 from version import VERSION
@@ -207,6 +207,9 @@ with st.sidebar:
     grid = st.toggle('Grid lines', True, key='grid_lines_toggle')
     legend = st.toggle('Legend', True, key='legend_toggle')
     width = st.number_input('Line width', min_value=1.0, max_value=5.0, value=3.5, step=0.5, format='%.1f', key='line_width_input')
+    text_size = st.segmented_control('Chart text', list(TEXT_SIZES), default='100%', key='chart_text_size',
+                                     help='Size of all text in the charts: title, axis names, time and temperature numbers, legend and '
+                                          'target labels. Also used for saved chart images.') or '100%'
     target_count = st.number_input('Target lines', min_value=0, max_value=MAX_TARGETS, value=0, step=1, key='target_count',
                                    help='Straight lines across the chart at temperatures you aimed for, each with its own name, '
                                         'for example "Pit" at 120 °C and "Meat" at 95 °C. Drawn on the comparison chart and the '
@@ -396,7 +399,8 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 hr {{border-color:var(--border)!important;}}
 {tint_css}</style>''', unsafe_allow_html=True)
 
-settings = {'alignment': alignment, 'theme': theme, 'grid': grid, 'legend': legend, 'width': width, 'smoothing_minutes': smoothing_minutes, 'targets': targets}
+settings = {'alignment': alignment, 'theme': theme, 'grid': grid, 'legend': legend, 'width': width, 'smoothing_minutes': smoothing_minutes, 'targets': targets,
+            'text_size': text_size}
 st.markdown(f'<div class="page-kicker">Cook profile studio</div><div class="page-title"><span class="cp-logo">{LOGO}</span>Cook Profile Dashboard</div><div class="page-version">Version {VERSION}</div><div class="page-note">Compare uploaded temperature profiles in a clean, consistent workspace. All temperatures are in degrees Celsius.</div>', unsafe_allow_html=True)
 
 pending = st.session_state.get('pending_import')

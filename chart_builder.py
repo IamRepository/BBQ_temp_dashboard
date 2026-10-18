@@ -71,29 +71,50 @@ def _palette(mode):
     return {'bg': '#FFFFFF', 'plot': '#FFFFFF', 'text': '#172033', 'muted': '#64748B', 'grid': 'rgba(100,116,139,0.11)', 'border': '#E2E8F0'}
 
 
+# Chart text size choices (sidebar, Chart options): label -> scale factor for every text in the charts.
+TEXT_SIZES = {'100%': 1.0, '125%': 1.25, '150%': 1.5, '175%': 1.75}
+
+
+def _legend_extra(fig, settings, s):
+    """Extra top margin when the legend row above the plot (up to 4 lines) wraps at a larger text size,
+    estimated for a chart about 900 px wide (the narrowest common case, with the sidebar open)."""
+    if not settings.get('legend') or not 0 < len(fig.data) <= 4:
+        return 0
+    width = sum(len(str(t.name)) * 6.2 * s + 46 for t in fig.data)
+    rows = int(width // 860) + 1
+    return round((rows - 1) * 21 * s)
+
+
+def text_scale(settings):
+    return TEXT_SIZES.get(settings.get('text_size', '100%'), 1.0)
+
+
 def _layout(fig, settings, title, height=None, x_title=None, y_title='Temperature (°C)', subtitle=None):
     # No height: the page sizes the comparison and single-profile charts at 16:9 to the card width.
     colors = _palette(settings['theme'])
-    heading = {'text': title, 'x': 0.02, 'xanchor': 'left', 'font': {'size': 18}}
+    s = text_scale(settings)   # Chart text size: 1.0 = 100 %
+    heading = {'text': title, 'x': 0.02, 'xanchor': 'left', 'font': {'size': round(18 * s)}}
     if subtitle:
-        heading['subtitle'] = {'text': subtitle, 'font': {'size': 12, 'color': colors['muted']}}
+        heading['subtitle'] = {'text': subtitle, 'font': {'size': round(12 * s), 'color': colors['muted']}}
     fig.update_layout(
         title=heading,
         height=height,
         paper_bgcolor=colors['bg'],
         plot_bgcolor=colors['plot'],
-        font={'color': colors['text'], 'family': 'Inter, Arial, sans-serif'},
+        font={'color': colors['text'], 'family': 'Inter, Arial, sans-serif', 'size': round(12 * s)},
         hovermode='x unified',
         showlegend=settings['legend'],
         # Up to 4 lines: one row above the plot. More (a multi-probe cook): a column to the right, so a long
         # legend never runs into the title.
         legend=({'orientation': 'h', 'y': 1.02, 'yanchor': 'bottom', 'x': 0.02} if len(fig.data) <= 4 else
                 {'orientation': 'v', 'y': 1, 'yanchor': 'top', 'x': 1.01, 'xanchor': 'left'})
-               | {'font': {'size': 11, 'color': colors['muted']}, 'bgcolor': 'rgba(0,0,0,0)'},
-        hoverlabel={'bgcolor': colors['bg'], 'bordercolor': colors['border'], 'font': {'color': colors['text']}},
-        margin={'l': 64, 'r': 30, 't': 122 if subtitle else 86, 'b': 58},
+               | {'font': {'size': round(11 * s), 'color': colors['muted']}, 'bgcolor': 'rgba(0,0,0,0)'},
+        hoverlabel={'bgcolor': colors['bg'], 'bordercolor': colors['border'], 'font': {'color': colors['text'], 'size': round(13 * s)}},
+        # Room for the title, subtitle and legend grows with the text; the axes make their own room (automargin).
+        margin={'l': round(64 * s), 'r': 30, 't': round((122 if subtitle else 86) * s) + _legend_extra(fig, settings, s), 'b': round(58 * s)},
     )
-    axis = dict(showgrid=settings['grid'], gridcolor=colors['grid'], zeroline=False, linecolor=colors['border'], tickfont={'color': colors['muted']}, title_font={'color': colors['muted']})
+    axis = dict(showgrid=settings['grid'], gridcolor=colors['grid'], zeroline=False, linecolor=colors['border'], automargin=True,
+                tickfont={'color': colors['muted'], 'size': round(12 * s)}, title_font={'color': colors['muted'], 'size': round(14 * s)})
     if x_title is None:
         x_title = 'Time' if settings['alignment'] == 'Clock time' else 'Aligned time (hours)'
     fig.update_xaxes(title=x_title, **axis)
@@ -104,17 +125,31 @@ def _layout(fig, settings, title, height=None, x_title=None, y_title='Temperatur
 def _target(fig, settings):
     """Target lines: dotted lines across the chart at temperatures the cook aimed for, each labelled with its own
     name and temperature ("Pit 120 °C"). In the page's text colour, so they never look like one of the profiles.
-    Labels alternate between the left and right end, so two targets close together stay readable."""
+    All labels sit at the left end, above their line; a label that would run into the one above it goes below its line."""
     targets = list(settings.get('targets') or [])
     if not targets and settings.get('target') is not None:      # single target, as in v1.6.10
         targets = [('Target', settings['target'])]
+    if not targets:
+        return fig
     colors = _palette(settings['theme'])
-    for i, (name, value) in enumerate(targets):
+    s = text_scale(settings)
+    # Temperature range of the chart, to judge when two labels are too close (a label is about 6 % of the
+    # plot height at 100 % text on a 16:9 chart).
+    values = [float(v) for trace in fig.data for v in (trace.y if trace.y is not None else []) if v == v]
+    values += [float(v) for _, v in targets]
+    span = (max(values) - min(values)) or 1.0
+    room = 0.065 * s * span
+    above_line = []                                              # values whose label is above the line
+    for name, value in sorted(targets, key=lambda item: -item[1]):
+        crowded = any(0 < other - value < room for other in above_line)
+        position = 'bottom left' if crowded else 'top left'
+        if not crowded:
+            above_line.append(value)
         label = html.escape(f'{name} {value:g} °C')
         fig.add_hline(y=value, line={'color': colors['text'], 'width': 2, 'dash': 'dot'}, layer='above',
-                      annotation={'text': label, 'font': {'color': colors['text'], 'size': 12},
+                      annotation={'text': label, 'font': {'color': colors['text'], 'size': round(12 * s)},
                                   'bgcolor': colors['bg'], 'borderpad': 2},
-                      annotation_position='top left' if i % 2 == 0 else 'top right')
+                      annotation_position=position)
     return fig
 
 

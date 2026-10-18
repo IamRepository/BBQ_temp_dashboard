@@ -430,3 +430,46 @@ class V172Logo(unittest.TestCase):
         source = (Path(__file__).resolve().parent.parent / 'app.py').read_text()
         self.assertIn("LOGO = 'monitoring'", source)
         self.assertIn("page_icon=f':material/{LOGO}:'", source)
+
+
+class V174TextSizeAndTargetLabels(unittest.TestCase):
+    def setUp(self):
+        self.profiles, _ = load_uploaded_files([Upload(DATA / 'ok_device_cest.csv'), Upload(DATA / 'h5_fixed_setpoint.csv')])
+        self.at = page(self.profiles)
+
+    def layouts(self):
+        import json
+        return [json.loads(c.proto.spec)['layout'] for c in self.at.get('plotly_chart')]
+
+    def test_all_target_labels_on_the_left(self):
+        at = self.at
+        at.number_input(key='target_count').set_value(3).run()
+        for layout in (self.layouts()[0], self.layouts()[-1]):
+            targets = [a for a in layout['annotations'] if a['text'].endswith('°C')]
+            self.assertEqual(len(targets), 3)
+            self.assertTrue(all(a['x'] == 0 and a['xanchor'] == 'left' for a in targets), targets)
+
+    def test_close_targets_label_above_and_below(self):
+        at = self.at
+        at.number_input(key='target_count').set_value(3).run()
+        for i, value in enumerate((230, 80, 72)):
+            at.number_input(key=f'target_value_{i}').set_value(value)
+        at.run()
+        labels = {a['text']: a['yanchor'] for a in self.layouts()[0]['annotations'] if a['text'].endswith('°C')}
+        self.assertEqual(labels['Target 230 °C'], 'bottom')      # above its line
+        self.assertEqual(labels['Target 2 80 °C'], 'bottom')
+        self.assertEqual(labels['Target 3 72 °C'], 'top')        # 8 °C under another target: below its line
+
+    def test_chart_text_size(self):
+        at = self.at
+        base = self.layouts()[0]
+        self.assertEqual((base['title']['font']['size'], base['xaxis']['tickfont']['size'], base['yaxis']['title']['font']['size']), (18, 12, 14))
+        at.button_group(key='chart_text_size').set_value('150%').run()
+        self.assertEqual(problems(at), [])
+        for layout in self.layouts():                                            # every chart, including Setpoint vs measured
+            self.assertEqual(layout['xaxis']['tickfont']['size'], 18)
+            self.assertEqual(layout['yaxis']['title']['font']['size'], 21)
+            self.assertEqual(layout['legend']['font']['size'], 16)
+        big = self.layouts()[0]
+        self.assertEqual(big['title']['font']['size'], 27)
+        self.assertGreater(big['margin']['t'], base['margin']['t'])

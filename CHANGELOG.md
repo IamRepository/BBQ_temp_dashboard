@@ -2,6 +2,24 @@
 
 All releases of the Cook Profile Dashboard, newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.7.4] - 2026-10-19
+
+Chart text size, and target labels on the left. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Added
+- **Chart text size.** A "Chart text" choice under Chart options: 100 % (the size until now), 125 %, 150 % or 175 %.
+  - It scales every text in the charts: the title and summary line, the axis names, the time and temperature numbers, the legend, the target labels and the hover box.
+  - It applies to all three charts and to images saved with the camera icon.
+  - The room above the plot grows with the text. When the legend above the chart wraps onto a second row, extra room is added so it stays clear of the summary line.
+- 3 more regression tests (82 in all): labels on the left, close targets above and below, and the text sizes on every chart.
+
+### Changed
+- **All target-line labels sit at the left end of their line.** In 1.7.3 they alternated between left and right.
+- **Close targets stay readable.** When a target is close below another (for example 80 °C and 72 °C), its label goes just under its own line instead of above it, so the two labels do not overlap. How close counts as "close" follows the text size.
+
+### Upgrade note
+- Reboot the app on Streamlit Community Cloud after deploying (Manage app, three dots, Reboot app): `chart_builder.py` changed.
+
 ## [1.7.3] - 2026-10-19
 
 More target lines, each with its own name. Commit [`3fef10d`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/3fef10d).
@@ -422,6 +440,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.7.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/3fef10d...COMMIT
 [1.7.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/0e90d49...3fef10d
 [1.7.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/c0b7cb5...0e90d49
 [1.7.1]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/aae9a5c...c0b7cb5
