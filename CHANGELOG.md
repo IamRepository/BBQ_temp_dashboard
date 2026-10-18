@@ -4,7 +4,7 @@ All releases of the Cook Profile Dashboard, newest first. Dates are when each re
 
 ## [1.7.5] - 2026-10-19
 
-Ambient role. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+Ambient role. Commit [`0f4db45`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/0f4db45).
 
 ### Added
 - **New role: Ambient,** for the air right next to the meat, wherever the probe sits. Example: the Typhur ambient sensor in the probe handle, which on a whole chicken can be 20-25 cm above the grate and read differently from both the grate and the pit thermostat.
@@ -457,7 +457,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
-[1.7.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d8e26da...COMMIT
+[1.7.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d8e26da...0f4db45
 [1.7.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/3fef10d...d8e26da
 [1.7.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/0e90d49...3fef10d
 [1.7.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/c0b7cb5...0e90d49
