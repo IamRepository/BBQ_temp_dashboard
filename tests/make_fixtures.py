@@ -66,7 +66,7 @@ def main():
                       'Connet - Probe 1 (°C)': [23.5, 30.1, 40.2, 50.3, 60.4],
                       'Smoque_XL - Probe 2 (°C)': [18.7, 19.0, 19.5, 20.1, 20.8]}).to_excel(writer, sheet_name='Cook profiles', index=False)
 
-    # v1.7.0: two Typhur probes as BBQ Chart to Data writes them (UTF-8 with BOM, day-first Timestamp,
+    # v1.7.0: two Typhur probes as Chart-2-Data writes them (UTF-8 with BOM, day-first Timestamp,
     # Ambient + Meat), started 30 min apart; one start read from a screenshot, the other typed.
     for number, start, source in ((1, 10 * 60, 'read and confirmed'), (2, 10 * 60 + 30, 'typed')):
         rows = [f'16/10/2026 {(start + m) // 60:02d}:{(start + m) % 60:02d},{110 + m % 7},{20 + m * 0.4:.1f},{source}' for m in range(0, 120, 5)]

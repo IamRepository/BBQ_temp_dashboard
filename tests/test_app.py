@@ -373,7 +373,7 @@ class V170ImportReview(unittest.TestCase):
         at.button(key='apply_import').click().run()
         typed = next(p for p in at.session_state['profiles'] if p.metadata.get('start_source') == 'typed')
         at.selectbox(key='selected_profile_id').set_value(typed.profile_id).run()
-        self.assertTrue(any('start time typed in Chart to Data, check it' in c.value for c in at.caption))
+        self.assertTrue(any('start time typed in Chart-2-Data, check it' in c.value for c in at.caption))
 
     def test_role_change_renames_and_sets_the_setpoint(self):
         at = self.at
@@ -425,8 +425,8 @@ class V172Logo(unittest.TestCase):
     def test_monitoring_logo_in_sidebar_and_title(self):
         at = page([])
         logos = [m.value for m in list(at.markdown) + list(at.sidebar.markdown) if 'cp-logo' in m.value]
-        self.assertTrue(any('page-title' in m and '>monitoring</span>Cook Profile Dashboard' in m for m in logos), logos)
-        self.assertTrue(any('side-brand' in m and '>monitoring</span>Cook Profile' in m for m in logos), logos)
+        self.assertTrue(any('page-title' in m and '>monitoring</span>Probe-2-Plot' in m for m in logos), logos)
+        self.assertTrue(any('side-brand' in m and '>monitoring</span>Probe-2-Plot' in m for m in logos), logos)
         source = (Path(__file__).resolve().parent.parent / 'app.py').read_text()
         self.assertIn("LOGO = 'monitoring'", source)
         self.assertIn("page_icon=f':material/{LOGO}:'", source)
@@ -511,3 +511,13 @@ class V176RolesShown(unittest.TestCase):
         self.pills().set_value(['Meat', 'Ambient', 'Pit']).run()
         self.assertEqual(len(self.chart()['data']), 5)
         self.assertNotIn('hidden', self.chart()['layout']['title']['subtitle']['text'])
+
+
+class V177Name(unittest.TestCase):
+    def test_new_name_in_tab_sidebar_and_title(self):
+        source = APP.read_text(encoding='utf-8') if hasattr(APP, 'read_text') else open(APP, encoding='utf-8').read()
+        self.assertIn("page_title='Probe-2-Plot'", source)
+        self.assertEqual(source.count('</span>Probe-2-Plot</div>'), 2)
+        self.assertNotIn('Cook Profile Dashboard', source)
+        self.assertNotIn('Chart to Data', source)
+

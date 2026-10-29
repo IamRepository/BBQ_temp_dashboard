@@ -13,11 +13,11 @@ from export_utils import EXPORT_INTERVALS, export_filename, profiles_to_excel
 from version import VERSION
 import re
 
-# Logo: the Material 'monitoring' icon (a rising chart), in the same style as BBQ Chart to Data's 'dashboard' icon.
+# Logo: the Material 'monitoring' icon (a rising chart), in the same style as Chart-2-Data's 'dashboard' icon.
 LOGO = 'monitoring'
 MAX_TARGETS = 5
 TARGET_DEFAULTS = [('Target', 200.0), ('Target 2', 95.0), ('Target 3', 120.0), ('Target 4', 150.0), ('Target 5', 80.0)]
-st.set_page_config(page_title='Cook Profile Dashboard', page_icon=f':material/{LOGO}:', layout='wide', initial_sidebar_state='expanded')
+st.set_page_config(page_title='Probe-2-Plot', page_icon=f':material/{LOGO}:', layout='wide', initial_sidebar_state='expanded')
 
 if 'profiles' not in st.session_state:
     st.session_state.profiles = []
@@ -177,7 +177,7 @@ def rename_profile(profile_id, widget_key):
         st.session_state.rename_error = None
 
 with st.sidebar:
-    st.markdown(f'<div class="side-brand"><span class="cp-logo">{LOGO}</span>Cook Profile</div><div class="side-sub">Temperature dashboard</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="side-brand"><span class="cp-logo">{LOGO}</span>Probe-2-Plot</div><div class="side-sub">Temperature dashboard</div>', unsafe_allow_html=True)
     st.markdown('<div class="section-label" style="margin-top:.3rem">DATA</div>', unsafe_allow_html=True)
     files = st.file_uploader('Upload CSV or Excel files', type=['csv', 'xlsx', 'xls'], accept_multiple_files=True, key='uploaded_profile_files')
     keep = st.checkbox('Keep existing profiles', True, key='keep_existing_profiles')
@@ -415,7 +415,7 @@ hr {{border-color:var(--border)!important;}}
 
 settings = {'alignment': alignment, 'theme': theme, 'grid': grid, 'legend': legend, 'width': width, 'smoothing_minutes': smoothing_minutes, 'targets': targets,
             'text_size': text_size}
-st.markdown(f'<div class="page-kicker">Cook profile studio</div><div class="page-title"><span class="cp-logo">{LOGO}</span>Cook Profile Dashboard</div><div class="page-version">Version {VERSION}</div><div class="page-note">Compare uploaded temperature profiles in a clean, consistent workspace. All temperatures are in degrees Celsius.</div>', unsafe_allow_html=True)
+st.markdown(f'<div class="page-kicker">Cook profile dashboard</div><div class="page-title"><span class="cp-logo">{LOGO}</span>Probe-2-Plot</div><div class="page-version">Version {VERSION}</div><div class="page-note">Compare uploaded temperature profiles in a clean, consistent workspace. All temperatures are in degrees Celsius.</div>', unsafe_allow_html=True)
 
 pending = st.session_state.get('pending_import')
 if pending:
@@ -572,7 +572,7 @@ with st.container(border=True, key='profile_details_card'):
     if offset:
         status.append(f'offset {offset_readout(offset)} (h:mm:ss)')
     if 'typed' in str(selected.metadata.get('start_source', '')).lower():
-        status.append('start time typed in Chart to Data, check it')
+        status.append('start time typed in Chart-2-Data, check it')
     st.caption('  |  '.join(s for s in status if s))
     if trim_all and st.session_state.get('group_trim_note'):
         st.caption('No readings inside this window, left as they were: ' + ', '.join(st.session_state.group_trim_note))

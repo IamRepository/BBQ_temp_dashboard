@@ -216,7 +216,7 @@ def _temperature_columns(df,timecol):
 START_SOURCE=re.compile(r'^start\s*time\s*(source|set|set\s*by)$',re.I)
 
 def _start_source(df):
-    """BBQ Chart to Data writes how each probe's start time was set ("read and confirmed" from a start
+    """Chart-2-Data writes how each probe's start time was set ("read and confirmed" from a start
     screenshot, or "typed") into a text column "Start time source". Returns (value or '', df without it)."""
     for c in df.columns:
         if START_SOURCE.match(str(c).strip()):
@@ -244,7 +244,7 @@ def dataframe_to_profiles(df,source,sheet=None,color_start=0):
     message=f"{where}: detected '{timecol}' and created {len(profiles)} profile(s)."
     if clock_note: message+=' Note: '+clock_note
     if start_source and 'typed' in start_source.lower():
-        message+=' Start time typed in Chart to Data, not read from a start screenshot: check it.'
+        message+=' Start time typed in Chart-2-Data, not read from a start screenshot: check it.'
     elif start_source:
         message+=f' Start time: {start_source}.'
     for note in notes: message+=' '+note

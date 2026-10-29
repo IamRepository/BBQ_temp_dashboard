@@ -1,6 +1,21 @@
 # Changelog
 
-All releases of the Cook Profile Dashboard, newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
+All releases of Probe-2-Plot (called Cook Profile Dashboard up to v1.7.6), newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
+
+## [1.7.7] - 2026-10-29
+
+New name: Probe-2-Plot. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Changed
+- **The app is now called Probe-2-Plot** (was Cook Profile Dashboard), in the same style as its companion app Chart-2-Data: probe readings in, plots out.
+  - The new name is in the browser tab, the sidebar and the page title. The small heading above the title now reads "Cook profile dashboard".
+  - The logo (Material "monitoring" icon) is unchanged.
+- **Chart-2-Data's new name.** The import note and the status line for a typed start time now say "Chart-2-Data" (was "Chart to Data").
+- 1 more regression test (86 in all): the new name in the browser tab, the sidebar and the page title.
+
+### Not changed
+- The Excel export (file name "Cook profiles YYYY-MM-DD.xlsx", sheet "Cook profiles", column names), so the Brisket Tenderness Analyzer reads it as before.
+- The repository name and the app's web address. Renaming the repository on GitHub is optional and may change the Streamlit address.
 
 ## [1.7.6] - 2026-10-19
 
@@ -478,6 +493,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.7.7]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/2ea9b11...COMMIT
 [1.7.6]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/0f4db45...2ea9b11
 [1.7.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d8e26da...0f4db45
 [1.7.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/3fef10d...d8e26da
