@@ -4,7 +4,7 @@ All releases of Probe-2-Plot (called Cook Profile Dashboard up to v1.7.6), newes
 
 ## [1.7.7] - 2026-10-29
 
-New name: Probe-2-Plot. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+New name: Probe-2-Plot. Commit [`5a0f5dc`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/5a0f5dc).
 
 ### Changed
 - **The app is now called Probe-2-Plot** (was Cook Profile Dashboard), in the same style as its companion app Chart-2-Data: probe readings in, plots out.
@@ -493,7 +493,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
-[1.7.7]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/2ea9b11...COMMIT
+[1.7.7]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/2ea9b11...5a0f5dc
 [1.7.6]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/0f4db45...2ea9b11
 [1.7.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d8e26da...0f4db45
 [1.7.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/3fef10d...d8e26da
