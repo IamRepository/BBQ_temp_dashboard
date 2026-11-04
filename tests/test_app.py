@@ -521,3 +521,10 @@ class V177Name(unittest.TestCase):
         self.assertNotIn('Cook Profile Dashboard', source)
         self.assertNotIn('Chart to Data', source)
 
+
+class V178UploadHint(unittest.TestCase):
+    def test_upload_hint_uses_the_muted_text_colour(self):
+        # Streamlit draws "200MB per file" in its light-theme grey (1.2:1 on the dark upload box) unless overridden.
+        source = open(APP, encoding='utf-8').read()
+        self.assertIn('[data-testid="stFileUploaderDropzoneInstructions"] * {{color:var(--muted)!important;}}', source)
+

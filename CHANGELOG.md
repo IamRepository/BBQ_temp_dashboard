@@ -2,6 +2,15 @@
 
 All releases of Probe-2-Plot (called Cook Profile Dashboard up to v1.7.6), newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.7.8] - 2026-11-04
+
+Readable upload hint in dark mode. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Fixed
+- **Upload box hint.** The line "200MB per file • CSV, XLSX, XLS" in the upload box was drawn in Streamlit's light-theme grey and was almost invisible on the dark box (contrast 1.2:1). It now uses the app's muted text colour (above 4.5:1 in dark and light mode).
+- Checked with a browser contrast scan of the sidebar in dark and light mode: no other text below 4.5:1.
+- 1 more regression test (87 in all).
+
 ## [1.7.7] - 2026-10-29
 
 New name: Probe-2-Plot. Commit [`5a0f5dc`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/5a0f5dc).
@@ -493,6 +502,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.7.8]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/5a0f5dc...COMMIT
 [1.7.7]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/2ea9b11...5a0f5dc
 [1.7.6]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/0f4db45...2ea9b11
 [1.7.5]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d8e26da...0f4db45

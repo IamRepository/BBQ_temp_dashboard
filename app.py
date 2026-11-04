@@ -384,6 +384,7 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 [data-testid="stFileUploader"] [data-testid="stBaseButton-minimal"],[data-testid="stFileUploader"] [data-testid="stIconMaterial"] {{color:var(--text)!important;}}
 [data-baseweb="select"]>div,[data-baseweb="input"]>div,.stTextInput input {{background:var(--card-alt)!important;border-color:var(--border)!important;color:var(--text)!important;border-radius:10px!important;}}
 [data-testid="stFileUploaderDropzone"] {{background:var(--card-alt);border:1px dashed var(--border);border-radius:12px;}}
+[data-testid="stFileUploaderDropzoneInstructions"] * {{color:var(--muted)!important;}}
 [data-testid="stExpander"] {{border:1px solid var(--border);border-radius:12px;background:var(--card);}}
 [data-baseweb="tag"],[data-testid="stMultiSelect"] [data-tag] {{background:{colors['tag_bg']}!important;color:{colors['tag_text']}!important;border:1px solid {colors['tag_border']}!important;border-radius:8px!important;box-shadow:none!important;}}
 [data-baseweb="tag"] span,[data-testid="stMultiSelect"] [data-tag] span {{color:{colors['tag_text']}!important;font-weight:600!important;}}

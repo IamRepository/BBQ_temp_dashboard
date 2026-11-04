@@ -1,8 +1,8 @@
-# Probe-2-Plot v1.7.7
+# Probe-2-Plot v1.7.8
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
 
-**What's new in 1.7.7:** the app is now called Probe-2-Plot (formerly Cook Profile Dashboard), a companion to Chart-2-Data. 1.7.6 added "Roles shown" under the comparison chart, a legend grouped by role, and hidden roles named in the chart's summary line. Since 1.7.0: roles for multi-device cooks (including Ambient), a Check the import step, colour by probe, a Line style choice per profile, a logo, up to five named target lines, a chart text size, and Excel export names the Brisket Tenderness Analyzer reads correctly. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
+**What's new in 1.7.8:** the upload box hint ("200MB per file") is readable in dark mode. 1.7.7 renamed the app to Probe-2-Plot (formerly Cook Profile Dashboard), a companion to Chart-2-Data. Since 1.7.0: roles for multi-device cooks (including Ambient), a Check the import step, colour by probe, a Line style choice per profile, a logo, up to five named target lines, a chart text size, and Excel export names the Brisket Tenderness Analyzer reads correctly. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Features
 - Import one or more CSV, XLSX or XLS files, then check the import: tick the columns to add, and set each one's role and probe before anything is added. Each temperature column becomes a profile named "<probe> - <role>". Day-first (03/10/2026) and year-first (2026-10-03) dates, Excel dates, elapsed-time columns, zone names and UTC offsets, the clock change, probe dropouts and Fahrenheit are handled, and an Import notes panel reports what was found and skipped.
