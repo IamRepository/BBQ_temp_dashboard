@@ -4,7 +4,7 @@ All releases of Probe-2-Plot (called Cook Profile Dashboard up to v1.7.6), newes
 
 ## [1.8.0] - 2026-11-04
 
-No sidebar: a Start card and a toolbar under the page title. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT). Chosen by the user from four drawn options (option A), then reviewed in the app on branch design/v1.8.0-toolbar.
+No sidebar: a Start card and a toolbar under the page title. Commit [`7fe1339`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/7fe1339). Chosen by the user from four drawn options (option A), then reviewed in the app on branch design/v1.8.0-toolbar.
 
 ### Changed
 - **The sidebar is gone.** Everything it held now sits under the page title, so the chart starts about 250 px higher and uses the full window width.
@@ -530,7 +530,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
-[1.8.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d984c6d...COMMIT
+[1.8.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d984c6d...7fe1339
 [1.7.8]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/5a0f5dc...d984c6d
 [1.7.7]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/2ea9b11...5a0f5dc
 [1.7.6]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/0f4db45...2ea9b11
