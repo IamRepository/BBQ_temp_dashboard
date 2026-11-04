@@ -17,7 +17,7 @@ import re
 LOGO = 'monitoring'
 MAX_TARGETS = 5
 TARGET_DEFAULTS = [('Target', 200.0), ('Target 2', 95.0), ('Target 3', 120.0), ('Target 4', 150.0), ('Target 5', 80.0)]
-st.set_page_config(page_title='Probe-2-Plot', page_icon=f':material/{LOGO}:', layout='wide', initial_sidebar_state='expanded')
+st.set_page_config(page_title='Probe-2-Plot', page_icon=f':material/{LOGO}:', layout='wide', initial_sidebar_state='collapsed')
 
 if 'profiles' not in st.session_state:
     st.session_state.profiles = []
@@ -176,23 +176,47 @@ def rename_profile(profile_id, widget_key):
         profile.name = new_name
         st.session_state.rename_error = None
 
-with st.sidebar:
-    st.markdown(f'<div class="side-brand"><span class="cp-logo">{LOGO}</span>Probe-2-Plot</div><div class="side-sub">Temperature dashboard</div>', unsafe_allow_html=True)
-    st.markdown('<div class="section-label" style="margin-top:.3rem">DATA</div>', unsafe_allow_html=True)
-    files = st.file_uploader('Upload CSV or Excel files', type=['csv', 'xlsx', 'xls'], accept_multiple_files=True, key='uploaded_profile_files')
-    keep = st.checkbox('Keep existing profiles', True, key='keep_existing_profiles')
-    if st.button('Import uploaded files', type='primary', width='stretch', disabled=not files, key='import_profiles_button'):
-        try:
-            # Read the files, then let the user check columns, roles and probes before anything is added.
-            new, messages = load_uploaded_files(files, existing=P if keep else [])
-            st.session_state.pending_import = {'profiles': new, 'messages': messages, 'keep': keep, 'batch': uuid.uuid4().hex[:8]}
-            st.rerun()
-        except Exception as exc:
-            st.error(f'Import failed: {exc}')
-    st.button('Clear all profiles', width='stretch', key='clear_profiles_button', on_click=clear_profiles)
+# v1.8.0: no sidebar. Top to bottom: page header, start card (only before the first import), toolbar, import notes.
+# The containers are made here, in page order, and filled further down (the header needs the theme's CSS first).
+header_area = st.container(key='page_header')
+start_area = st.container()
+toolbar_area = st.container(border=True, key='toolbar_card')
+notes_area = st.container()
 
-    st.markdown('<div class="section-label">APPEARANCE</div>', unsafe_allow_html=True)
-    theme = st.segmented_control('Theme', ['Light', 'Dark'], default='Dark', key='theme_selector') or 'Dark'
+
+def import_files(files, keep):
+    try:
+        # Read the files, then let the user check columns, roles and probes before anything is added.
+        new, messages = load_uploaded_files(files, existing=P if keep else [])
+        st.session_state.pending_import = {'profiles': new, 'messages': messages, 'keep': keep, 'batch': uuid.uuid4().hex[:8]}
+        st.rerun()
+    except Exception as exc:
+        st.error(f'Import failed: {exc}')
+
+
+if not P and not st.session_state.get('pending_import'):
+    # Start card: where the "Upload ... from the sidebar to begin" note used to be.
+    with start_area.container(border=True, key='start_card'):
+        st.markdown('<div class="card-title">Start: add your cook files</div>', unsafe_allow_html=True)
+        drop, side = st.columns([4.2, 1.2], gap='medium', vertical_alignment='center')
+        files = drop.file_uploader('Upload CSV or Excel files', type=['csv', 'xlsx', 'xls'], accept_multiple_files=True, key='uploaded_profile_files',
+                                   help='Weber Connect, Typhur via Chart-2-Data, or any CSV, XLSX or XLS file with a time column.')
+        if side.button('Import files', type='primary', width='stretch', disabled=not files, key='import_profiles_button'):
+            import_files(files, True)
+        side.caption('You check columns, roles and probes before anything is added.')
+
+with toolbar_area:
+    # Before the first import the start card holds the file box, so the toolbar has no Add files button.
+    widths = [1.35, 2.0, 2.05, 1.6, 1.25, 0.05, 1.0] if P else [2.0, 2.05, 1.6, 1.25, 1.4, 1.0]
+    columns = st.columns(widths, gap='small', vertical_alignment='bottom')
+    c_add = columns.pop(0) if P else None
+    c_align, c_smooth, c_opts, c_theme, _, c_clear = columns
+    if P:
+        with c_add.popover('Add files', icon=':material/add:', type='primary', width='stretch'):
+            files = st.file_uploader('Upload CSV or Excel files', type=['csv', 'xlsx', 'xls'], accept_multiple_files=True, key='uploaded_profile_files')
+            keep = st.checkbox('Keep existing profiles', True, key='keep_existing_profiles')
+            if st.button('Import files', type='primary', width='stretch', disabled=not files, key='import_profiles_button'):
+                import_files(files, keep)
     alignment_modes = {'Start': 'Original timeline', 'Peak': 'Align peak', 'End': 'Align end', 'Clock': 'Clock time'}
     alignment_help = (
         '**Start**: every profile starts at zero.\n\n'
@@ -200,7 +224,7 @@ with st.sidebar:
         '**End**: every profile ends at zero.\n\n'
         '**Clock**: real time of day, so profiles from different devices line up.'
     )
-    alignment_choice = st.segmented_control('Timeline alignment', list(alignment_modes), default='Start', key='alignment_selector', help=alignment_help) or 'Start'
+    alignment_choice = c_align.segmented_control('Timeline alignment', list(alignment_modes), default='Start', key='alignment_selector', help=alignment_help) or 'Start'
     alignment = alignment_modes[alignment_choice]
     smoothing_options = {'Off': 0, '1 min': 1, '5 min': 5, '10 min': 10}
     smoothing_help = (
@@ -208,43 +232,47 @@ with st.sidebar:
         '**Off** shows readings exactly as logged.\n\n'
         'Setpoints and exported data are never smoothed.'
     )
-    smoothing_choice = st.segmented_control('Smoothing', list(smoothing_options), default='Off', key='smoothing_selector', help=smoothing_help) or 'Off'
+    smoothing_choice = c_smooth.segmented_control('Smoothing', list(smoothing_options), default='Off', key='smoothing_selector', help=smoothing_help) or 'Off'
     smoothing_minutes = smoothing_options[smoothing_choice]
+    with c_opts.popover('Chart options', icon=':material/tune:', width='stretch'):
+        o1, o2 = st.columns(2, gap='small')
+        grid = o1.toggle('Grid lines', True, key='grid_lines_toggle')
+        legend = o2.toggle('Legend', True, key='legend_toggle')
+        width = st.number_input('Line width', min_value=1.0, max_value=5.0, value=3.5, step=0.5, format='%.1f', key='line_width_input')
+        text_size = st.segmented_control('Chart text', list(TEXT_SIZES), default='100%', key='chart_text_size',
+                                         help='Size of all text in the charts: title, axis names, time and temperature numbers, legend and '
+                                              'target labels. Also used for saved chart images.') or '100%'
+        target_count = st.number_input('Target lines', min_value=0, max_value=MAX_TARGETS, value=0, step=1, key='target_count',
+                                       help='Straight lines across the chart at temperatures you aimed for, each with its own name, '
+                                            'for example "Pit" at 120 °C and "Meat" at 95 °C. Drawn on the comparison chart and the '
+                                            'selected profile\'s chart, and included in saved chart images. 0 = no target lines.')
+        targets = []
+        if target_count:
+            h1, h2 = st.columns([1.55, 1], gap='small')
+            h1.markdown('<div class="target-head">Name</div>', unsafe_allow_html=True)
+            h2.markdown('<div class="target-head">°C</div>', unsafe_allow_html=True)
+        for i in range(int(target_count)):
+            n1, n2 = st.columns([1.55, 1], gap='small', vertical_alignment='center')
+            name = n1.text_input(f'Target {i + 1} name', TARGET_DEFAULTS[i][0], key=f'target_name_{i}', label_visibility='collapsed',
+                                 placeholder=f'Target {i + 1}')
+            value = n2.number_input(f'Target {i + 1} temperature (°C)', min_value=-50.0, max_value=500.0, value=TARGET_DEFAULTS[i][1],
+                                    step=1.0, format='%.0f', key=f'target_value_{i}', label_visibility='collapsed')
+            targets.append((name.strip() or f'Target {i + 1}', value))
+        image_format = st.segmented_control('Image download', ['PNG', 'JPEG'], default='JPEG', key='image_format_selector',
+                                            help='File type saved by the camera icon in the top right of each chart.') or 'JPEG'
+    theme = c_theme.segmented_control('Theme', ['Light', 'Dark'], default='Dark', key='theme_selector') or 'Dark'
+    c_clear.button('Clear all', width='stretch', key='clear_profiles_button', on_click=clear_profiles, disabled=not P,
+                   help='Remove every profile.')
 
-    st.markdown('<div class="section-label">CHART OPTIONS</div>', unsafe_allow_html=True)
-    grid = st.toggle('Grid lines', True, key='grid_lines_toggle')
-    legend = st.toggle('Legend', True, key='legend_toggle')
-    width = st.number_input('Line width', min_value=1.0, max_value=5.0, value=3.5, step=0.5, format='%.1f', key='line_width_input')
-    text_size = st.segmented_control('Chart text', list(TEXT_SIZES), default='100%', key='chart_text_size',
-                                     help='Size of all text in the charts: title, axis names, time and temperature numbers, legend and '
-                                          'target labels. Also used for saved chart images.') or '100%'
-    target_count = st.number_input('Target lines', min_value=0, max_value=MAX_TARGETS, value=0, step=1, key='target_count',
-                                   help='Straight lines across the chart at temperatures you aimed for, each with its own name, '
-                                        'for example "Pit" at 120 °C and "Meat" at 95 °C. Drawn on the comparison chart and the '
-                                        'selected profile\'s chart, and included in saved chart images. 0 = no target lines.')
-    targets = []
-    if target_count:
-        h1, h2 = st.columns([1.55, 1], gap='small')
-        h1.markdown('<div class="target-head">Name</div>', unsafe_allow_html=True)
-        h2.markdown('<div class="target-head">°C</div>', unsafe_allow_html=True)
-    for i in range(int(target_count)):
-        n1, n2 = st.columns([1.55, 1], gap='small', vertical_alignment='center')
-        name = n1.text_input(f'Target {i + 1} name', TARGET_DEFAULTS[i][0], key=f'target_name_{i}', label_visibility='collapsed',
-                             placeholder=f'Target {i + 1}')
-        value = n2.number_input(f'Target {i + 1} temperature (°C)', min_value=-50.0, max_value=500.0, value=TARGET_DEFAULTS[i][1],
-                                step=1.0, format='%.0f', key=f'target_value_{i}', label_visibility='collapsed')
-        targets.append((name.strip() or f'Target {i + 1}', value))
-    image_format = st.segmented_control('Image download', ['PNG', 'JPEG'], default='JPEG', key='image_format_selector',
-                                        help='File type saved by the camera icon in the top right of each chart.') or 'JPEG'
-    if st.session_state.get('import_messages'):
-        with st.expander('Import notes', expanded=True):
-            for message in st.session_state.import_messages:
-                st.caption(message)
+if st.session_state.get('import_messages'):
+    with notes_area.expander(f"Import notes ({len(st.session_state.import_messages)})", expanded=False):
+        for message in st.session_state.import_messages:
+            st.caption(message)
 
 
 
 def chart_config(filename, wide=False):
-    # The camera icon in each chart's toolbar saves the picture in the format chosen in the sidebar.
+    # The camera icon in each chart's toolbar saves the picture in the format chosen under Chart options.
     # 16:9 charts are saved at 1600 x 900 (3200 x 1800 pixels at scale 2), whatever the window size.
     safe = re.sub(r'[^A-Za-z0-9._-]+', '_', filename).strip('_') or 'chart'
     image = {'format': image_format.lower(), 'filename': safe, 'scale': 2}
@@ -308,7 +336,6 @@ if active_profile is not None:
 is_dark = theme == 'Dark'
 colors = {
     'page': '#0F172A' if is_dark else '#F8FAFC',
-    'sidebar': '#111827' if is_dark else '#FFFFFF',
     'card': '#111827' if is_dark else '#FFFFFF',
     'card_alt': '#1F2937' if is_dark else '#F8FAFC',
     'text': '#F3F4F6' if is_dark else '#172033',
@@ -325,19 +352,13 @@ colors = {
 }
 
 st.markdown(f'''<style>
-:root {{--page:{colors['page']};--sidebar:{colors['sidebar']};--card:{colors['card']};--card-alt:{colors['card_alt']};--text:{colors['text']};--muted:{colors['muted']};--border:{colors['border']};--accent:{colors['accent']};--kicker:{colors['kicker']};}}
+:root {{--page:{colors['page']};--card:{colors['card']};--card-alt:{colors['card_alt']};--text:{colors['text']};--muted:{colors['muted']};--border:{colors['border']};--accent:{colors['accent']};--kicker:{colors['kicker']};}}
 .stApp {{background:var(--page); color:var(--text);}}
 [data-testid="stHeader"] {{background:color-mix(in srgb, var(--page) 88%, transparent);}}
-[data-testid="stSidebar"] {{background:var(--sidebar); border-right:1px solid var(--border);}}
-[data-testid="stSidebar"] > div:first-child {{padding-top:.9rem;}}
-[data-testid="stSidebarHeader"] {{position:absolute;top:.6rem;right:.5rem;height:auto;width:auto;padding:0;margin:0;z-index:5;}}
 .block-container {{max-width:1600px; padding-top:4.4rem; padding-bottom:3rem;}}
 h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
-.side-brand {{font-size:1.15rem;font-weight:750;color:var(--text);letter-spacing:-.02em;display:flex;align-items:center;gap:.4rem}}
 .cp-logo {{font-family:'Material Symbols Rounded';font-weight:normal;font-style:normal;font-size:1.35rem;line-height:1;letter-spacing:normal;text-transform:none;white-space:nowrap;direction:ltr;-webkit-font-smoothing:antialiased;font-feature-settings:'liga';color:inherit}}
 .page-title .cp-logo {{font-size:2.3rem}}
-.side-sub {{font-size:.78rem;color:var(--muted);margin-bottom:.2rem}}
-.section-label {{font-size:.68rem;font-weight:750;letter-spacing:.12em;color:var(--muted);margin:1.5rem 0 .6rem}}
 .page-kicker {{font-size:.72rem;font-weight:750;letter-spacing:.12em;color:var(--kicker);text-transform:uppercase}}
 .page-title {{font-size:2rem;font-weight:760;letter-spacing:-.035em;color:var(--text);margin-top:.16rem;display:flex;align-items:center;gap:.5rem}}
 .page-version {{font-size:.8rem;font-weight:600;color:var(--muted);margin-top:.2rem}}
@@ -361,6 +382,18 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 [data-testid="stMetricValue"] {{color:var(--text);font-size:1.72rem;font-weight:720;letter-spacing:-.03em}}
 [data-testid="stMetricDelta"] {{color:var(--muted);background:var(--card-alt);border-radius:999px;padding:.18rem .45rem;width:max-content;font-size:.72rem}}
 [data-testid="stVerticalBlockBorderWrapper"] {{background:var(--card);border:1px solid var(--border)!important;border-radius:18px;box-shadow:{colors['shadow']};}}
+/* v1.8.0: cards by key (Streamlit 1.65 draws bordered containers without the wrapper above, in its light-theme grey) */
+.st-key-toolbar_card,.st-key-start_card,.st-key-import_review_card,.st-key-profile_details_card,.st-key-setpoint_card,.st-key-stats_card {{background:var(--card);border:1px solid var(--border)!important;border-radius:18px;box-shadow:{colors['shadow']};}}
+/* Toolbar pop-overs (Add files, Chart options): button and panel in the theme's colours */
+[data-testid="stPopoverButton"] {{background:var(--card-alt)!important;border:1px solid var(--border)!important;border-radius:10px!important;min-height:2.65rem;font-weight:650;box-shadow:none!important;}}
+[data-testid="stPopoverButton"] * {{color:var(--text)!important;}}
+[data-testid="stPopoverButton"][kind="primary"] {{background:var(--accent)!important;border-color:var(--accent)!important;}}
+[data-testid="stPopoverButton"][kind="primary"] * {{color:#fff!important;}}
+[data-testid="stPopoverBody"] {{background:var(--card)!important;border:1px solid var(--border)!important;color:var(--text)!important;min-width:360px;}}
+[data-testid="stPopoverBody"] label,[data-testid="stPopoverBody"] p {{color:var(--text)!important;}}
+.st-key-toolbar_card [data-testid="stButtonGroup"] button {{padding-left:.6rem!important;padding-right:.6rem!important;white-space:nowrap;}}
+/* Narrow windows: the toolbar wraps onto a second row instead of cutting buttons off */
+@media (max-width:1180px) {{.st-key-toolbar_card [data-testid="stHorizontalBlock"] {{flex-wrap:wrap!important;row-gap:.6rem;}} .st-key-toolbar_card [data-testid="stColumn"] {{flex:0 1 auto!important;width:auto!important;min-width:fit-content!important;}}}}
 /* Buttons: every action button gets explicit colours, so text never inherits a colour meant for another background */
 [data-testid="stBaseButton-secondary"],[data-testid="stBaseButton-primary"],.stDownloadButton>button {{border-radius:10px!important;font-weight:650;min-height:2.65rem;box-shadow:none!important;}}
 [data-testid="stBaseButton-secondary"],.stDownloadButton>button {{background:var(--card-alt)!important;border:1px solid var(--border)!important;color:var(--text)!important;}}
@@ -369,7 +402,6 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 [data-testid="stBaseButton-primary"] {{background:var(--accent)!important;border:1px solid var(--accent)!important;color:#fff!important;}}
 [data-testid="stBaseButton-primary"] * {{color:#fff!important;}}
 [data-testid="stBaseButton-primary"]:hover {{background:{colors['accent_hover']}!important;border-color:{colors['accent_hover']}!important;}}
-[data-testid="stSidebar"] [data-testid="stBaseButton-secondary"] {{background:transparent!important;}}
 /* Help tooltips and open dropdown lists follow the theme */
 [data-testid="stTooltipContent"] {{background:var(--card)!important;color:var(--text)!important;border:1px solid var(--border);box-shadow:{colors['shadow']};}}
 [data-testid="stTooltipContent"] * {{color:var(--text)!important;}}
@@ -389,12 +421,11 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 [data-baseweb="tag"],[data-testid="stMultiSelect"] [data-tag] {{background:{colors['tag_bg']}!important;color:{colors['tag_text']}!important;border:1px solid {colors['tag_border']}!important;border-radius:8px!important;box-shadow:none!important;}}
 [data-baseweb="tag"] span,[data-testid="stMultiSelect"] [data-tag] span {{color:{colors['tag_text']}!important;font-weight:600!important;}}
 [data-baseweb="tag"] svg,[data-testid="stMultiSelect"] [data-tag] svg {{color:{colors['muted']}!important;fill:{colors['muted']}!important;}}
-[data-testid="stSidebar"] [data-testid="stButtonGroup"] button[role="radio"] {{padding-left:.55rem!important;padding-right:.55rem!important;font-size:.85rem;}}
 [data-baseweb="select"] {{color:var(--text)!important;}}
 [data-testid="stSelectbox"] div:has(> input),[data-testid="stMultiSelect"] div:has(> input),[data-testid="stNumberInput"] div:has(> input),[data-testid="stTextInputRootElement"] {{background:var(--card-alt)!important;border-color:var(--border)!important;border-radius:10px!important;}}
 [data-testid="stSelectbox"] input,[data-testid="stNumberInput"] input,[data-testid="stTextInputField"] {{color:var(--text)!important;-webkit-text-fill-color:var(--text)!important;}}
-[data-testid="stTooltipIcon"],[data-testid="stSidebarHeader"] button,[data-testid="stSidebarCollapseButton"] button,[data-testid="stSidebarCollapseButton"] span,[data-testid="stNumberInput"] button {{color:var(--muted)!important;}}
-[data-testid="stTooltipIcon"] svg,[data-testid="stSidebarHeader"] svg,[data-testid="stSidebarCollapseButton"] svg,[data-testid="stNumberInput"] button svg {{color:var(--muted)!important;fill:var(--muted)!important;}}
+[data-testid="stTooltipIcon"],[data-testid="stNumberInput"] button {{color:var(--muted)!important;}}
+[data-testid="stTooltipIcon"] svg,[data-testid="stNumberInput"] button svg {{color:var(--muted)!important;fill:var(--muted)!important;}}
 [data-testid="stExpander"] summary {{background:var(--card)!important;color:var(--text)!important;border-radius:12px;}}
 [data-testid="stExpander"] summary p {{color:var(--text)!important;}}
 [data-testid="stButtonGroup"] button[role="radio"] {{background:var(--card-alt)!important;border:1px solid var(--border)!important;}}
@@ -409,14 +440,13 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 [class*="st-key-roles_shown_"] button:is([aria-pressed="true"],[aria-checked="true"]) * {{color:#fff!important;}}
 [data-testid="stCheckbox"] label:has(input[role="switch"]:checked) > div:not([data-testid="stWidgetLabel"]) {{background:var(--accent)!important;}}
 [data-testid="stMetricDelta"] svg {{display:none;}}
-[data-testid="stSidebar"] hr {{margin:1rem 0;}}
 [data-testid="stColorPicker"] button {{border-radius:999px!important;width:2.4rem!important;height:2.4rem!important;border:2px solid var(--card)!important;box-shadow:0 0 0 1px var(--border)!important;}}
 hr {{border-color:var(--border)!important;}}
 {tint_css}</style>''', unsafe_allow_html=True)
 
 settings = {'alignment': alignment, 'theme': theme, 'grid': grid, 'legend': legend, 'width': width, 'smoothing_minutes': smoothing_minutes, 'targets': targets,
             'text_size': text_size}
-st.markdown(f'<div class="page-kicker">Cook profile dashboard</div><div class="page-title"><span class="cp-logo">{LOGO}</span>Probe-2-Plot</div><div class="page-version">Version {VERSION}</div><div class="page-note">Compare uploaded temperature profiles in a clean, consistent workspace. All temperatures are in degrees Celsius.</div>', unsafe_allow_html=True)
+header_area.markdown(f'<div class="page-kicker">Cook profile dashboard</div><div class="page-title"><span class="cp-logo">{LOGO}</span>Probe-2-Plot</div><div class="page-version">Version {VERSION}</div><div class="page-note">Compare uploaded temperature profiles in a clean, consistent workspace. All temperatures are in degrees Celsius.</div>', unsafe_allow_html=True)
 
 pending = st.session_state.get('pending_import')
 if pending:
@@ -425,7 +455,7 @@ if pending:
                     'Profiles of one probe share a colour. Colour and line style can be changed per profile afterwards.</div>', unsafe_allow_html=True)
         new_profiles = pending['profiles']
         if not new_profiles:
-            st.warning('No new temperature columns were found. Import notes in the sidebar say why.')
+            st.warning('No new temperature columns were found. Import notes say why.')
             st.button('Close', key='cancel_import', on_click=cancel_import)
         else:
             batch = pending['batch']
@@ -455,8 +485,6 @@ if pending:
     st.write('')
 
 if not P:
-    if not pending:
-        st.info('Upload one or more CSV or Excel files from the sidebar to begin.')
     st.stop()
 
 profile_by_id = {p.profile_id: p for p in P}
@@ -613,7 +641,7 @@ with st.container(border=True, key='profile_details_card'):
 st.write('')
 setpoints = [p for p in P if p.is_setpoint]
 measured_profiles = [p for p in P if not p.is_setpoint]
-with st.container(border=True):
+with st.container(border=True, key='setpoint_card'):
     st.markdown('<div class="card-title">Setpoint vs measured</div><div class="card-note">How closely a probe followed the temperature the cooker was set to hold</div>', unsafe_allow_html=True)
     if not setpoints or not measured_profiles:
         st.info('Set the Role of a profile to "Setpoint" in Profile details (or at import), for example the cooker\'s own temperature setting. It can then be compared with a measured probe here.')
@@ -653,7 +681,7 @@ a.metric('PROFILE', selected.name)
 b.metric('DURATION', f'{selected.duration_hours:.1f} h')
 c.metric('MAXIMUM TEMPERATURE', f'{selected.maximum_c:.1f} °C')
 d.metric('VISIBLE SAMPLES', f'{len(selected.plotted_data):,}', f'{len(selected.data):,} total', delta_color='off')
-with st.container(border=True):
+with st.container(border=True, key='stats_card'):
     with st.container(key='chart_single'):
         st.plotly_chart(single(selected, settings), width='stretch', theme=None, config=chart_config(selected.name, wide=True))
     with st.expander('Preview imported data'):

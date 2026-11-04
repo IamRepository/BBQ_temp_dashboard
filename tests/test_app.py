@@ -366,7 +366,7 @@ class V170ImportReview(unittest.TestCase):
         at.button(key='cancel_import').click().run()
         self.assertEqual(at.session_state['profiles'], [])
         self.assertNotIn('pending_import', at.session_state)
-        self.assertTrue(any('to begin' in i.value for i in at.info))
+        self.assertTrue(any('Start: add your cook files' in m.value for m in at.markdown))
 
     def test_typed_start_flagged_in_the_status_line(self):
         at = self.at
@@ -422,11 +422,10 @@ class V171LineStyle(unittest.TestCase):
 
 
 class V172Logo(unittest.TestCase):
-    def test_monitoring_logo_in_sidebar_and_title(self):
+    def test_monitoring_logo_in_title(self):
         at = page([])
         logos = [m.value for m in list(at.markdown) + list(at.sidebar.markdown) if 'cp-logo' in m.value]
         self.assertTrue(any('page-title' in m and '>monitoring</span>Probe-2-Plot' in m for m in logos), logos)
-        self.assertTrue(any('side-brand' in m and '>monitoring</span>Probe-2-Plot' in m for m in logos), logos)
         source = (Path(__file__).resolve().parent.parent / 'app.py').read_text()
         self.assertIn("LOGO = 'monitoring'", source)
         self.assertIn("page_icon=f':material/{LOGO}:'", source)
@@ -514,10 +513,10 @@ class V176RolesShown(unittest.TestCase):
 
 
 class V177Name(unittest.TestCase):
-    def test_new_name_in_tab_sidebar_and_title(self):
+    def test_new_name_in_tab_and_title(self):
         source = APP.read_text(encoding='utf-8') if hasattr(APP, 'read_text') else open(APP, encoding='utf-8').read()
         self.assertIn("page_title='Probe-2-Plot'", source)
-        self.assertEqual(source.count('</span>Probe-2-Plot</div>'), 2)
+        self.assertEqual(source.count('</span>Probe-2-Plot</div>'), 1)
         self.assertNotIn('Cook Profile Dashboard', source)
         self.assertNotIn('Chart to Data', source)
 
@@ -527,4 +526,37 @@ class V178UploadHint(unittest.TestCase):
         # Streamlit draws "200MB per file" in its light-theme grey (1.2:1 on the dark upload box) unless overridden.
         source = open(APP, encoding='utf-8').read()
         self.assertIn('[data-testid="stFileUploaderDropzoneInstructions"] * {{color:var(--muted)!important;}}', source)
+
+
+class V180Toolbar(unittest.TestCase):
+    """v1.8.0: no sidebar; a start card before the first import, then a toolbar with Add files and Chart options pop-overs."""
+
+    def test_empty_page_has_start_card_and_no_sidebar(self):
+        at = page([])
+        self.assertEqual(problems(at), [])
+        self.assertEqual(len(at.sidebar.children), 0)
+        self.assertTrue(any('Start: add your cook files' in m.value for m in at.markdown))
+        self.assertEqual(len(at.get('file_uploader')), 1)
+        self.assertEqual([p.proto.popover.label for p in at.get('popover')], ['Chart options'])     # no Add files before the first import
+        self.assertTrue(at.button(key='clear_profiles_button').disabled)
+
+    def test_toolbar_after_import(self):
+        profiles, _ = load_uploaded_files([Upload(DATA / 'ok_device_cest.csv')])
+        at = page(profiles)
+        self.assertEqual(problems(at), [])
+        self.assertFalse(any('Start: add your cook files' in m.value for m in at.markdown))
+        self.assertEqual([p.proto.popover.label for p in at.get('popover')], ['Add files', 'Chart options'])
+        self.assertEqual(len(at.get('file_uploader')), 1)                                   # inside Add files
+        for key in ('alignment_selector', 'smoothing_selector', 'theme_selector', 'chart_text_size', 'image_format_selector'):
+            self.assertTrue(any(w.key == key for w in at.get('button_group')), key)
+        at.toggle(key='grid_lines_toggle').set_value(False).run()                             # Chart options still work
+        at.number_input(key='target_count').set_value(2).run()
+        self.assertEqual(problems(at), [])
+        self.assertEqual(len([w for w in at.text_input if str(w.key).startswith('target_name_')]), 2)
+
+    def test_import_notes_folded_with_count(self):
+        at = page([])
+        at.session_state['import_messages'] = ['a.csv: note one.', 'Imported 1 profile(s).']
+        at.run()
+        self.assertTrue(any(e.label == 'Import notes (2)' for e in at.expander))
 
