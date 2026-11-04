@@ -1,12 +1,12 @@
-# Probe-2-Plot v1.7.8
+# Probe-2-Plot v1.8.0
 
 Streamlit dashboard for comparing uploaded cook temperature profiles in degrees Celsius.
 
-**What's new in 1.7.8:** the upload box hint ("200MB per file") is readable in dark mode. 1.7.7 renamed the app to Probe-2-Plot (formerly Cook Profile Dashboard), a companion to Chart-2-Data. Since 1.7.0: roles for multi-device cooks (including Ambient), a Check the import step, colour by probe, a Line style choice per profile, a logo, up to five named target lines, a chart text size, and Excel export names the Brisket Tenderness Analyzer reads correctly. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
+**What's new in 1.8.0:** no sidebar. Before the first import a Start card holds the file box; after it, one toolbar under the page title has Add files, Timeline alignment, Smoothing, Chart options, Theme and Clear all, so the chart starts higher and uses the full width. 1.7.7 renamed the app to Probe-2-Plot (formerly Cook Profile Dashboard), a companion to Chart-2-Data. Since 1.7.0: roles for multi-device cooks (including Ambient), a Check the import step, colour by probe, a Line style choice per profile, a logo, up to five named target lines, a chart text size, and Excel export names the Brisket Tenderness Analyzer reads correctly. The full history of every release is in [CHANGELOG.md](CHANGELOG.md).
 
 ## Features
-- Import one or more CSV, XLSX or XLS files, then check the import: tick the columns to add, and set each one's role and probe before anything is added. Each temperature column becomes a profile named "<probe> - <role>". Day-first (03/10/2026) and year-first (2026-10-03) dates, Excel dates, elapsed-time columns, zone names and UTC offsets, the clock change, probe dropouts and Fahrenheit are handled, and an Import notes panel reports what was found and skipped.
-- Page layout, top to bottom: overview cards; one card with Profile details (two compact rows and a status line), the comparison chart and the Excel export; Setpoint vs measured; then the selected profile's statistics and chart.
+- Import one or more CSV, XLSX or XLS files, then check the import: tick the columns to add, and set each one's role and probe before anything is added. Each temperature column becomes a profile named "<probe> - <role>". Day-first (03/10/2026) and year-first (2026-10-03) dates, Excel dates, elapsed-time columns, zone names and UTC offsets, the clock change, probe dropouts and Fahrenheit are handled, and Import notes (folded under the toolbar) report what was found and skipped.
+- Page layout, top to bottom: title; Start card (before the first import) or the toolbar (Add files, Timeline alignment, Smoothing, Chart options, Theme, Clear all); Import notes; overview cards; one card with Profile details (two compact rows and a status line), the comparison chart and the Excel export; Setpoint vs measured; then the selected profile's statistics and chart.
 - Roles shown (under the comparison chart): switch whole roles on or off, for example hide every Meat line. The legend is grouped by role with a heading per role, and hidden roles are named in the chart's summary line ("hidden: Meat"), on screen and in saved images.
 - Overlay profiles on one chart, aligned by start, peak, end or clock time, with optional smoothing (1, 5 or 10 min). Long cooks are drawn with at most 4,000 points per line, keeping each stretch's lowest and highest reading so short spikes still show; statistics, the setpoint comparison and the export use every reading.
 - Roles: Meat, Point, Flat, Ambient, Grate, Pit, Hold, Setpoint and Other, suggested from the column name (for example Typhur Ambient as Ambient, Typhur Meat as Meat, the Weber cavity as Pit). Ambient is the air right next to the meat wherever the probe sits; Grate is a sensor fixed at grate level; Pit is the cooker's own thermostat. Profiles of one probe share a colour. Every line is solid unless a Line style is chosen in Profile details (Solid, Dashed, Dotted, Dash-dot, Long dash); a setpoint starts dashed. With more than four lines the legend moves beside the chart.
@@ -39,7 +39,7 @@ After a release that changes files other than `app.py`, reboot the app (Manage a
 ## Files
 | File | Purpose |
 | --- | --- |
-| `app.py` | Page layout, sidebar, profile details and all user interaction |
+| `app.py` | Page layout, toolbar, profile details and all user interaction |
 | `profile_loader.py` | Reading CSV and Excel files into profiles |
 | `roles.py` | Roles, probe labels, line style choices and the Analyzer-safe export names |
 | `models.py` | The profile object: data, trim window, offset, setpoint flag |

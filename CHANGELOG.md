@@ -2,6 +2,34 @@
 
 All releases of Probe-2-Plot (called Cook Profile Dashboard up to v1.7.6), newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.8.0] - 2026-11-04
+
+No sidebar: a Start card and a toolbar under the page title. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT). Chosen by the user from four drawn options (option A), then reviewed in the app on branch design/v1.8.0-toolbar.
+
+### Changed
+- **The sidebar is gone.** Everything it held now sits under the page title, so the chart starts about 250 px higher and uses the full window width.
+- **Start card (before the first import).** Where the note "Upload one or more CSV or Excel files from the sidebar to begin" used to be: the file box, the Import files button, and a line saying columns, roles and probes are checked before anything is added.
+- **Toolbar.** One row: Add files · Timeline alignment · Smoothing · Chart options · Theme · Clear all.
+  - **Add files** opens a small panel with the file box, Keep existing profiles and Import files. It appears once profiles are loaded; before that the Start card does the job.
+  - **Chart options** opens a panel with Grid lines, Legend, Line width, Chart text, Target lines (with their names and temperatures) and Image download.
+  - The toolbar is also shown on the empty page, so the choices are kept after Clear all. Clear all is greyed out when there is nothing to clear.
+  - In windows narrower than about 1,180 px the toolbar wraps onto a second row instead of cutting buttons off.
+- **Import notes** are folded under the toolbar, with the number of notes in the title ("Import notes (4)"). A start time typed in Chart-2-Data is still flagged in the profile's status line.
+
+### Fixed
+- **Card borders on Streamlit 1.65.** The cards (toolbar, Start, Check the import, Profile details, Setpoint vs measured, Selected profile statistics) were drawn with Streamlit's light-theme border, nearly invisible in dark mode. They now use the theme's card colour and border in both themes.
+- The two panels (Add files, Chart options) use the theme's colours; Streamlit draws them white by default.
+
+### Removed
+- Sidebar styling that no longer applies.
+
+### Tests
+- 3 more regression tests (90 in all): the empty page (Start card, no sidebar, no Add files, Clear all greyed out), the toolbar after an import (both panels, every setting still works), and the folded Import notes with their count. Three older tests updated for the missing sidebar.
+- Browser checks on Streamlit 1.65 and 1.60, dark and light, with each panel open: no new text below 4.5:1 contrast; toolbar checked at 800, 1,000, 1,100, 1,180, 1,280 and 1,440 px.
+
+### Upgrade note
+- Reboot the app on Streamlit Community Cloud after deploying (Manage app, three dots, Reboot app). Only `app.py` changed, but the layout change is large.
+
 ## [1.7.8] - 2026-11-04
 
 Readable upload hint in dark mode. Commit [`d984c6d`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/d984c6d).
@@ -502,6 +530,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.8.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d984c6d...COMMIT
 [1.7.8]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/5a0f5dc...d984c6d
 [1.7.7]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/2ea9b11...5a0f5dc
 [1.7.6]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/0f4db45...2ea9b11
