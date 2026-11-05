@@ -2,6 +2,29 @@
 
 All releases of Probe-2-Plot (called Cook Profile Dashboard up to v1.7.6), newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.8.2] - 2026-11-05
+
+The rest of the 28 Oct diff audit (D4, D7, D8, D11 in part) and the legend item from the 5 Nov audit. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Added
+- **Probe field in Profile details (D8).** The probe a profile comes from could only be set in Check the import. It can now be changed at any time, between Display name and Channel. Colour follows the probe: type the name of a probe already on the dashboard to take its colour, or a new name to give the profile its own unused colour. A display name still in the "<probe> - <role>" form follows the new probe ("Typhur 1 - Ambient"). A blank entry is ignored.
+
+### Changed
+- **The overview card counts probes, not files (D7).** "DEVICES / Source files" is now "PROBES / From N files", and the chart summary says "4 probes" instead of "2 devices". Chart-2-Data writes one file per Typhur probe, so files over-counted Typhurs; one Weber file holds the controller and its own probes, so files under-counted it.
+- **Excel export names keep a probe name (D4).** Removing the words the Brisket Tenderness Analyzer reads as other roles could leave only the role: "Hold oven - Meat" became "Meat", and two such columns came out as "Meat" and "Meat 2". Now the file name, without those words, is put in front, or "Device" when nothing is left: "Device - Meat", "Kitchen - Meat". The Analyzer still reads the intended role from every name.
+- **The selected profile's legend sits under its chart.** Above the plot, the room for it was estimated for the old sidebar layout and left an empty band about 40 px high on wide screens. Under the chart Plotly makes exactly the room needed, one row or two, at any width. (The comparison chart's legend, grouped by role, stays at the right.)
+- **"Channel label" is now "Channel"**, with a help text, so row 1 of Profile details fits eight fields. Below about 1,180 px that row wraps onto two lines instead of squeezing every field.
+- README: the tested Python version (3.13) and the Probe field. A LICENSE file is not added yet: the licence is the owner's choice.
+
+### Removed
+- The legend-row estimate (`_legend_extra`), no longer needed.
+
+### Tests
+- 7 more regression tests (111 in all): export names that keep a probe name and two such columns staying apart; the Probe field (new probe gets its own colour and name, joining a probe takes its colour, blank ignored); the legend under the selected profile's chart and beside the grouped comparison chart. Two tests updated for PROBES. All pass on Streamlit 1.66.1 and 1.60.0. Browser: row 1 checked at 1,000, 1,180, 1,280 and 1,440 px; contrast scan in dark and light mode with every panel open, nothing new below 4.5:1.
+
+### Upgrade note
+- Reboot the app on Streamlit Community Cloud after deploying (`roles.py`, `export_utils.py` and `chart_builder.py` changed).
+
 ## [1.8.1] - 2026-11-05
 
 Import, export and security fixes from the 28 Oct diff audit (D1, D2, D3, D5, D6, D9, D10) and the 5 Nov audit backlog; Clear all asks first. Commit [`ee3b467`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/ee3b467).
@@ -561,6 +584,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.8.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/ee3b467...COMMIT
 [1.8.1]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/7fe1339...ee3b467
 [1.8.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d984c6d...7fe1339
 [1.7.8]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/5a0f5dc...d984c6d

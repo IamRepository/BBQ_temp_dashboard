@@ -75,16 +75,6 @@ def _palette(mode):
 TEXT_SIZES = {'100%': 1.0, '125%': 1.25, '150%': 1.5, '175%': 1.75}
 
 
-def _legend_extra(fig, settings, s):
-    """Extra top margin when the legend row above the plot (up to 4 lines) wraps at a larger text size,
-    estimated for a chart about 900 px wide (the narrowest common case, with the sidebar open)."""
-    if not settings.get('legend') or not fig.data or _legend_beside(fig):
-        return 0
-    width = sum(len(str(t.name)) * 6.2 * s + 46 for t in fig.data)
-    rows = int(width // 860) + 1
-    return round((rows - 1) * 21 * s)
-
-
 def _legend_beside(fig):
     """The legend goes to the right of the plot with more than 4 lines, or when it is grouped by role (its role
     headings make it too tall for the row above the plot)."""
@@ -110,14 +100,16 @@ def _layout(fig, settings, title, height=None, x_title=None, y_title='Temperatur
         font={'color': colors['text'], 'family': 'Inter, Arial, sans-serif', 'size': round(12 * s)},
         hovermode='x unified',
         showlegend=settings['legend'],
-        # A row above the plot for up to 4 ungrouped lines; otherwise (many lines, or grouped by role) a column to
-        # the right, so the legend never runs into the title.
-        legend=({'orientation': 'h', 'y': 1.02, 'yanchor': 'bottom', 'x': 0.02} if not _legend_beside(fig) else
+        # Up to 4 ungrouped lines (the selected profile's chart): a row under the x axis, at the bottom of the figure;
+        # Plotly makes room for it itself, one row or several, at any width (v1.8.2: it used to sit above the plot with
+        # an estimated top margin, which left an empty band on wide screens). Otherwise (many lines, or grouped by
+        # role) a column to the right, so the legend never runs into the title.
+        legend=({'orientation': 'h', 'yref': 'container', 'y': 0, 'yanchor': 'bottom', 'x': 0.02} if not _legend_beside(fig) else
                 {'orientation': 'v', 'y': 1, 'yanchor': 'top', 'x': 1.01, 'xanchor': 'left'})
                | {'font': {'size': round(11 * s), 'color': colors['muted']}, 'bgcolor': 'rgba(0,0,0,0)'},
         hoverlabel={'bgcolor': colors['bg'], 'bordercolor': colors['border'], 'font': {'color': colors['text'], 'size': round(13 * s)}},
         # Room for the title, subtitle and legend grows with the text; the axes make their own room (automargin).
-        margin={'l': round(64 * s), 'r': 30, 't': round((122 if subtitle else 86) * s) + _legend_extra(fig, settings, s), 'b': round(58 * s)},
+        margin={'l': round(64 * s), 'r': 30, 't': round((122 if subtitle else 86) * s), 'b': round(58 * s)},
     )
     axis = dict(showgrid=settings['grid'], gridcolor=colors['grid'], zeroline=False, linecolor=colors['border'], automargin=True,
                 tickfont={'color': colors['muted'], 'size': round(12 * s)}, title_font={'color': colors['muted'], 'size': round(14 * s)})

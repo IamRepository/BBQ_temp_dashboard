@@ -141,6 +141,30 @@ def change_role(profile_id, widget_key, name_key):
         st.session_state[name_key] = candidate
 
 
+def change_probe(profile_id, widget_key, name_key):
+    # D8 (v1.8.2): the probe label after import. Colour follows the probe; a name still in the default form follows it.
+    profile = next((p for p in st.session_state.profiles if p.profile_id == profile_id), None)
+    if profile is None:
+        return
+    new = st.session_state[widget_key].strip()
+    old = profile.probe
+    if not new or new == old:
+        st.session_state[widget_key] = old
+        return
+    others = [p for p in st.session_state.profiles if p is not profile]
+    profile.probe = new
+    same = [p for p in others if p.probe == new]
+    if same:                                             # joins a probe already on the dashboard: take its colour
+        profile.color = same[0].color
+    elif any(p.probe == old for p in others):            # its old probe keeps the colour: a new probe gets its own
+        profile.color = probe_colours([new], [(p.probe, p.color) for p in others], COLORS)[new]
+    st.session_state[f'edit_{profile_id}_color'] = profile.color
+    if profile.name == profile_name(old, profile.role):
+        candidate = unique_names([profile_name(new, profile.role)], taken={p.name for p in others})[0]
+        profile.name = candidate
+        st.session_state[name_key] = candidate
+
+
 def remove_profile(profile_id):
     remaining = [p for p in st.session_state.profiles if p.profile_id != profile_id]
     st.session_state.profiles = remaining
@@ -412,6 +436,8 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 [data-testid="stPopoverBody"] {{background:var(--card)!important;border:1px solid var(--border)!important;color:var(--text)!important;min-width:360px;}}
 [data-testid="stPopoverBody"] label,[data-testid="stPopoverBody"] p {{color:var(--text)!important;}}
 .st-key-toolbar_card [data-testid="stButtonGroup"] button {{padding-left:.6rem!important;padding-right:.6rem!important;white-space:nowrap;}}
+/* Narrow windows: Profile details row 1 (8 fields since v1.8.2) wraps instead of squeezing each field */
+@media (max-width:1180px) {{.st-key-details_row1 > [data-testid="stHorizontalBlock"], .st-key-details_row1 [data-testid="stHorizontalBlock"] {{flex-wrap:wrap!important;row-gap:.6rem;}} .st-key-details_row1 [data-testid="stColumn"] {{flex:1 1 150px!important;min-width:150px!important;width:auto!important;}} .st-key-details_row1 [data-testid="stColumn"]:has([data-testid="stColorPicker"]) {{flex:0 0 64px!important;min-width:64px!important;}}}}
 /* Narrow windows: the toolbar wraps onto a second row instead of cutting buttons off */
 @media (max-width:1180px) {{.st-key-toolbar_card [data-testid="stHorizontalBlock"] {{flex-wrap:wrap!important;row-gap:.6rem;}} .st-key-toolbar_card [data-testid="stColumn"] {{flex:0 1 auto!important;width:auto!important;min-width:fit-content!important;}}}}
 /* Buttons: every action button gets explicit colours, so text never inherits a colour meant for another background */
@@ -520,14 +546,21 @@ visible = [profile_by_id[pid] for pid in shown_ids if pid in profile_by_id]
 for profile in P:
     profile.visible = profile.profile_id in shown_ids
 
-devices = len({p.source_file for p in visible})
+def probe_count(profiles):
+    # D7 (v1.8.2): count probes, not files. Chart-2-Data writes one file per Typhur probe, so files over-counted;
+    # one Weber file holds the controller and its own probes, so files under-counted.
+    return len({p.probe or p.source_file for p in profiles})
+
+
+probes = probe_count(visible)
+files = len({p.source_file for p in visible})
 durations = [p.duration_hours for p in visible]
 mins = [p.minimum_c for p in visible]
 maxs = [p.maximum_c for p in visible]
 
 c1, c2, c3, c4 = st.columns(4)
 c1.metric('PROFILES', len(visible), f'{len(P)} loaded', delta_color='off')
-c2.metric('DEVICES', devices, 'Source files', delta_color='off')
+c2.metric('PROBES', probes, f'From {files} file{"" if files == 1 else "s"}', delta_color='off')
 c3.metric('DURATION RANGE', f'{min(durations):.1f} - {max(durations):.1f} h' if durations else 'No data', 'Visible profiles', delta_color='off')
 c4.metric('TEMPERATURE RANGE', f'{min(mins):.1f} - {max(maxs):.1f} °C' if mins else 'No data', 'Visible profiles', delta_color='off')
 
@@ -536,7 +569,7 @@ st.write('')
 with st.container(border=True, key='profile_details_card'):
     st.markdown('<div class="card-title compact">Profile details</div>', unsafe_allow_html=True)
     profile_dropdown_style('Profile', [profile_by_id[pid] for pid in profile_ids])   # a style element: kept out of the columns so labels line up
-    d1, d2, d3, d4, d5, d7, d6 = st.columns([1.85, 1.45, 1.15, 1.4, 0.5, 1.2, 1.3], gap='small', vertical_alignment='bottom')
+    d1, d2, d8, d3, d4, d5, d7, d6 = st.container(key='details_row1').columns([1.7, 1.35, 1.2, 1.05, 1.3, 0.45, 1.1, 1.2], gap='small', vertical_alignment='bottom')
     with d1:
         selected_id = st.selectbox('Profile', profile_ids, format_func=lambda pid: profile_by_id[pid].name, key='selected_profile_id', on_change=clear_rename_error)
         selected = profile_by_id[selected_id]
@@ -544,8 +577,16 @@ with st.container(border=True, key='profile_details_card'):
     name_key = f'{edit_key}_name'
     with d2:
         st.text_input('Display name', selected.name, key=name_key, on_change=rename_profile, args=(selected.profile_id, name_key))
+    with d8:
+        probe_key = f'{edit_key}_probe'
+        if st.session_state.get(probe_key) != selected.probe:
+            st.session_state[probe_key] = selected.probe
+        st.text_input('Probe', key=probe_key, on_change=change_probe, args=(selected.profile_id, probe_key, name_key),
+                      help='Which probe or device this profile comes from. Profiles of one probe share a colour: type the '
+                           'name of another probe to join it, or a new name to give this profile its own colour.')
     with d3:
-        channel = st.text_input('Channel label', selected.channel, key=f'{edit_key}_channel')
+        channel = st.text_input('Channel', selected.channel, key=f'{edit_key}_channel',
+                                help='The column name from the file; free text, shown in the chart hover.')
     with d4:
         offset_minutes = st.number_input('Offset (min)', min_value=-1440.0, max_value=1440.0, value=float(selected.offset_hours) * 60,
                                          step=1.0, format='%.2f', key=f'{edit_key}_offset_min',
@@ -636,10 +677,10 @@ with st.container(border=True, key='profile_details_card'):
     if visible and not charted:
         summary = f'All roles hidden ({", ".join(hidden_roles)})  |  choose the roles to show under the chart'
     elif visible:
-        chart_devices = len({p.source_file for p in charted})
+        chart_probes = probe_count(charted)
         chart_durations = [p.duration_hours for p in charted] or [0.0]
         count = f'{len(charted)} of {len(visible)} profiles' if hidden_roles else f'{len(visible)} profiles'
-        summary = f'{count}  |  {chart_devices} device{"" if chart_devices == 1 else "s"}  |  {min(chart_durations):.1f} - {max(chart_durations):.1f} h duration range'
+        summary = f'{count}  |  {chart_probes} probe{"" if chart_probes == 1 else "s"}  |  {min(chart_durations):.1f} - {max(chart_durations):.1f} h duration range'
         if hidden_roles:
             summary += '  |  hidden: ' + ', '.join(hidden_roles)
     else:

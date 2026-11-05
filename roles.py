@@ -129,12 +129,35 @@ def analyzer_role(name):
     return None
 
 
-def export_name(name, role):
+_ALL_HINTS = [hint for _, hints in _ANALYZER_RULES for hint in hints]
+
+
+def _neutral(label):
+    """A label with every word the Analyzer reads as a role removed (so it cannot change the role), or ''."""
+    for hint in sorted(_ALL_HINTS, key=len, reverse=True):
+        label = re.sub(re.escape(hint), '', str(label), flags=re.I)
+    return re.sub(r'[\s_\-]{2,}', ' ', label).strip(' _-')
+
+
+def _keep_probe(cleaned, name, role, fallback, wanted):
+    """D4 (v1.8.2): when removing the Analyzer's role words left only the role ("Hold oven - Meat" -> "Meat"), put back
+    a neutral probe label (the file name without role words, else "Device"), so two such columns stay apart."""
+    words = sorted({_ROLE_WORD.get(role, ''), role, 'Set temperature'} - {''}, key=len, reverse=True)
+    rest = re.sub(r'(?:^|\s-\s)(?:' + '|'.join(map(re.escape, words)) + r')$', '', cleaned, flags=re.I)   # the role at the end
+    if re.sub(r'[\s_\-()]', '', rest):
+        return cleaned                                    # some probe text is left: nothing to do
+    probe = _neutral(fallback) or 'Device'
+    candidate = f'{probe} - {cleaned}'
+    return candidate if analyzer_role(candidate) == wanted else cleaned
+
+
+def export_name(name, role, fallback=''):
     """The profile name as written in the Excel export: unchanged when the Analyzer already reads the
     intended role from it, otherwise with misleading words removed and the role word added.
     Examples: "Smoque_XL Probe 1 - Meat" contains "smoque" (a controller word for the Analyzer), so it
     becomes "XL Probe 1 - Meat"; "Typhur 3 - Pit" becomes "Typhur 3 - Pit (PID)"; a setpoint never
-    contains "point", which the Analyzer would take for the brisket point."""
+    contains "point", which the Analyzer would take for the brisket point. When nothing but the role would be left,
+    a neutral probe label from `fallback` (the file name) is kept in front."""
     wanted = ANALYZER_ROLE.get(role)
     if wanted is None:
         # No Analyzer role (Setpoint, Other): only make sure it is not taken for a brisket probe.
@@ -145,6 +168,7 @@ def export_name(name, role):
                     for hint in hints:
                         cleaned = re.sub(re.escape(hint), '', cleaned, flags=re.I)
             cleaned = re.sub(r'[\s_\-]{2,}', lambda m: ' - ' if '-' in m.group(0) else ' ', cleaned).strip(' _-') or role
+            cleaned = _keep_probe(cleaned, name, role, fallback, analyzer_role(cleaned))
         return cleaned
     if analyzer_role(name) == wanted:
         return name
@@ -163,7 +187,7 @@ def export_name(name, role):
             cleaned = f'{cleaned} - {_ROLE_WORD[role]}' if cleaned else _ROLE_WORD[role]
     if analyzer_role(cleaned) != wanted:   # cannot happen with the rules above; kept as a safe fallback
         cleaned = _ROLE_WORD[role]
-    return cleaned
+    return _keep_probe(cleaned, name, role, fallback, wanted)
 
 
 def probe_colours(probes, existing, palette):

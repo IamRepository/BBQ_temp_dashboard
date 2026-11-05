@@ -1,5 +1,6 @@
 """Excel export of the visible profiles: one time column, then one temperature column per profile."""
 import io
+from pathlib import Path
 
 import pandas as pd
 
@@ -13,7 +14,7 @@ def _column_names(profiles):
     # Names the Brisket Tenderness Analyzer reads with the intended role (roles.export_name), made unique.
     names, used = [], {}
     for p in profiles:
-        base = export_name(p.name, getattr(p, 'role', ''))
+        base = export_name(p.name, getattr(p, 'role', ''), fallback=Path(str(p.source_file)).stem)
         name = f'{base} (°C)'
         used[name] = used.get(name, 0) + 1
         names.append(name if used[name] == 1 else f'{base} {used[name]} (°C)')

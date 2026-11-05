@@ -512,3 +512,47 @@ class V181SmallFixes(unittest.TestCase):
         fig = comparison(profiles, settings)
         self.assertTrue(all(t.name.startswith('x&lt;br&gt;y') for t in fig.data), [t.name for t in fig.data])
         self.assertTrue(single(profiles[0], settings).layout.title.text.startswith('x&lt;br&gt;y'))
+
+
+class V182ExportKeepsAProbeName(unittest.TestCase):
+    """D4: removing the Analyzer's role words could leave only the role ("Hold oven - Meat" -> "Meat")."""
+
+    def test_neutral_probe_label_when_only_the_role_is_left(self):
+        cases = {('Hold oven - Meat', 'Meat', 'Hold oven'): 'Device - Meat',
+                 ('Environment - Ambient', 'Ambient', 'Environment log'): 'log - Ambient',
+                 ('Point probe - Other', 'Other', 'Point probe'): 'Device - Other',
+                 ('Meat - Setpoint', 'Setpoint', 'meat'): 'Device - Set temperature',
+                 ('Typhur 3 - Pit', 'Pit', 'Typhur 3'): 'Typhur 3 - Pit (PID)',             # unchanged cases
+                 ('Smoque_XL Probe 1 - Meat', 'Meat', 'Smoque_XL'): 'XL Probe 1 - Meat'}
+        for (name, role, fallback), expected in cases.items():
+            got = export_name(name, role, fallback)
+            self.assertEqual(got, expected, name)
+            self.assertEqual(analyzer_role(got), ANALYZER_ROLE[role], got)
+
+    def test_two_such_columns_stay_apart_in_the_export(self):
+        a, b = long_cook(1, 'Hold oven - Meat'), long_cook(1, 'Environment - Meat')
+        a.role = b.role = 'Meat'
+        a.source_file, b.source_file = 'Hold oven.csv', 'Kitchen.csv'
+        columns = list(export_table([a, b]).columns)[1:]
+        self.assertEqual(columns, ['Device - Meat (°C)', 'Kitchen - Meat (°C)'])
+
+
+
+class V182LegendUnderSmallCharts(unittest.TestCase):
+    """The selected profile's legend sits under the chart, where Plotly makes room for it at any width
+    (the old estimate above the plot left an empty band on wide screens)."""
+
+    def test_single_chart_legend_at_the_bottom(self):
+        profiles, _ = load('ok_device_cest.csv')
+        settings = {'alignment': 'Original timeline', 'smoothing_minutes': 5, 'theme': 'Dark', 'grid': True, 'legend': True,
+                    'width': 3.5, 'text_size': '175%'}
+        layout = single(profiles[0], settings).layout
+        self.assertEqual((layout.legend.orientation, layout.legend.yref, layout.legend.y, layout.legend.yanchor), ('h', 'container', 0, 'bottom'))
+        self.assertEqual(layout.margin.t, round(86 * 1.75))                 # no estimated extra rows
+
+    def test_grouped_comparison_legend_stays_beside(self):
+        profiles, _ = load('ok_device_cest.csv')
+        for p in profiles:
+            p.role = 'Meat'
+        settings = {'alignment': 'Original timeline', 'smoothing_minutes': 0, 'theme': 'Dark', 'grid': True, 'legend': True, 'width': 3.5}
+        self.assertEqual((comparison(profiles, settings).layout.legend.orientation), 'v')

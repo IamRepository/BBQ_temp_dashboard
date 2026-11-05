@@ -133,10 +133,11 @@ class V166Interactions(unittest.TestCase):
         self.at.selectbox(key='selected_profile_id').set_value(self.profiles[2].profile_id).run()
         self.assertNotIn('Profile names must be unique.', [w.value for w in self.at.warning])
 
-    def test_devices_card(self):   # L5
+    def test_devices_card(self):   # L5; D7 (v1.8.2): the card counts probes, and says how many files
         labels = {m.label: m.value for m in self.at.metric}
         self.assertNotIn('CHANNELS', labels)
-        self.assertEqual(labels.get('DEVICES'), '2')
+        self.assertEqual(labels.get('PROBES'), '5')                      # cavity + 2 probes, setpoint + 1 probe
+        self.assertEqual(next(m for m in self.at.metric if m.label == 'PROBES').proto.delta, 'From 2 files')
 
     def test_clock_alignment_names_profiles_without_clock_times(self):   # L9
         elapsed, _ = load_uploaded_files([Upload(DATA / 'h2_elapsed_hours.csv')])
@@ -227,7 +228,7 @@ class V169CompactLayout(unittest.TestCase):
         import json
         layout = json.loads(self.at.get('plotly_chart')[0].proto.spec)['layout']
         self.assertEqual(layout['title']['text'], 'Temperature profiles')
-        self.assertEqual(layout['title']['subtitle']['text'], '5 profiles  |  2 devices  |  0.0 - 0.1 h duration range')
+        self.assertEqual(layout['title']['subtitle']['text'], '5 profiles  |  5 probes  |  0.0 - 0.1 h duration range')
         self.assertFalse(any('Temperature profile comparison' in m.value for m in self.at.markdown))
 
     def test_one_card_controls_then_chart_then_export(self):
@@ -618,3 +619,51 @@ class V181ClearAllAndNames(unittest.TestCase):
         role_select = next(s for s in at.selectbox if str(s.key).endswith('_role'))
         for role in ('Ambient', 'Grate', 'Pit', 'Setpoint'):
             self.assertIn(f'**{role}**', role_select.help)
+
+
+class V182ProbeField(unittest.TestCase):
+    """D8: the probe label can be changed in Profile details; colour and the default name follow it."""
+
+    def setUp(self):
+        self.profiles, _ = load_uploaded_files([Upload(DATA / 'c2d_typhur_probe_1.csv'), Upload(DATA / 'c2d_typhur_probe_2.csv')])
+        for p in self.profiles:                                             # as Check the import names them
+            p.role = 'Ambient' if 'Ambient' in p.channel else 'Meat'
+            p.probe = Path(p.source_file).stem
+            p.name = f'{p.probe} - {p.role}'
+        from profile_loader import COLORS
+        from roles import probe_colours
+        colours = probe_colours([p.probe for p in self.profiles], [], COLORS)
+        for p in self.profiles:
+            p.color = colours[p.probe]
+        self.at = page(self.profiles)
+        self.by_name = {p.name: p for p in self.at.session_state['profiles']}
+
+    def select(self, name):
+        self.at.selectbox(key='selected_profile_id').set_value(self.by_name[name].profile_id).run()
+        return self.by_name[name]
+
+    def test_new_probe_gets_its_own_colour_and_name(self):
+        p = self.select('c2d_typhur_probe_1 - Meat')
+        partner = self.by_name['c2d_typhur_probe_1 - Ambient']
+        self.assertEqual(p.color, partner.color)
+        self.at.text_input(key=f'edit_{p.profile_id}_probe').set_value('Typhur 1 point').run()
+        self.assertEqual(problems(self.at), [])
+        p = next(q for q in self.at.session_state['profiles'] if q.profile_id == p.profile_id)
+        self.assertEqual((p.probe, p.name), ('Typhur 1 point', 'Typhur 1 point - Meat'))
+        self.assertNotEqual(p.color, partner.color)
+        self.assertNotIn(p.color, {q.color for q in self.at.session_state['profiles'] if q is not p})
+        self.assertEqual(self.at.color_picker(key=f'edit_{p.profile_id}_color').value.lower(), p.color.lower())
+
+    def test_joining_a_probe_takes_its_colour(self):
+        p = self.select('c2d_typhur_probe_2 - Meat')
+        target = self.by_name['c2d_typhur_probe_1 - Ambient']
+        self.at.text_input(key=f'edit_{p.profile_id}_probe').set_value('c2d_typhur_probe_1').run()
+        p = next(q for q in self.at.session_state['profiles'] if q.profile_id == p.profile_id)
+        self.assertEqual(p.color, target.color)
+        self.assertEqual(p.name, 'c2d_typhur_probe_1 - Meat 2')            # c2d_typhur_probe_1 - Meat is taken
+
+    def test_blank_probe_is_ignored(self):
+        p = self.select('c2d_typhur_probe_1 - Meat')
+        self.at.text_input(key=f'edit_{p.profile_id}_probe').set_value('  ').run()
+        self.assertEqual(self.at.text_input(key=f'edit_{p.profile_id}_probe').value, 'c2d_typhur_probe_1')
+
