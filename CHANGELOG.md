@@ -4,7 +4,7 @@ All releases of Probe-2-Plot (called Cook Profile Dashboard up to v1.7.6), newes
 
 ## [1.8.1] - 2026-11-05
 
-Import, export and security fixes from the 28 Oct diff audit (D1, D2, D3, D5, D6, D9, D10) and the 5 Nov audit backlog; Clear all asks first. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+Import, export and security fixes from the 28 Oct diff audit (D1, D2, D3, D5, D6, D9, D10) and the 5 Nov audit backlog; Clear all asks first. Commit [`ee3b467`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/ee3b467).
 
 ### Fixed
 - **Wide files with probe dropouts no longer stall the import (D1).** When a row had fewer values than the header, every possible placement of its values was tried: a 26-column file took about 6 s per short row, 30 columns about 3 minutes. The best placement is now found column by column, with the same result (checked against the old method in 1,500 random cases), in well under a millisecond per row.
@@ -561,7 +561,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
-[1.8.1]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/7fe1339...COMMIT
+[1.8.1]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/7fe1339...ee3b467
 [1.8.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d984c6d...7fe1339
 [1.7.8]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/5a0f5dc...d984c6d
 [1.7.7]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/2ea9b11...5a0f5dc
