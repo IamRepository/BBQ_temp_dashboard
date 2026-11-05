@@ -152,6 +152,11 @@ def clear_profiles():
     st.session_state.profiles = []
     st.session_state.visible_profile_ids = []
     st.session_state.selected_profile_id = None
+    # Start the next cook clean: no roles hidden, no notes or trim messages from the cook just removed.
+    for key in ('hidden_roles', 'group_trim_note', 'import_messages', 'rename_error'):
+        st.session_state.pop(key, None)
+    for key in [k for k in st.session_state if str(k).startswith('roles_shown_')]:   # the Roles shown pills keep their own choice
+        st.session_state.pop(key, None)
 
 
 def clear_rename_error():
@@ -184,6 +189,16 @@ toolbar_area = st.container(border=True, key='toolbar_card')
 notes_area = st.container()
 
 
+# What each role means, shown as the help text of the Role selects (written for v1.7.0, shown since v1.8.1).
+ROLE_HELP_TEXT = '\n\n'.join(f'**{role}**: {text}' for role, text in ROLE_HELP.items())
+
+
+def md(text):
+    """Text shown as Markdown (captions, notes, warnings) with Markdown, LaTeX ($) and :directive: characters escaped,
+    so file and profile names are shown exactly as written."""
+    return re.sub(r'([\\`*_{}\[\]()#+!|~<>$:])', r'\\\1', str(text))
+
+
 def import_files(files, keep):
     try:
         # Read the files, then let the user check columns, roles and probes before anything is added.
@@ -191,7 +206,7 @@ def import_files(files, keep):
         st.session_state.pending_import = {'profiles': new, 'messages': messages, 'keep': keep, 'batch': uuid.uuid4().hex[:8]}
         st.rerun()
     except Exception as exc:
-        st.error(f'Import failed: {exc}')
+        st.error(md(f'Import failed: {exc}'))
 
 
 if not P and not st.session_state.get('pending_import'):
@@ -261,13 +276,18 @@ with toolbar_area:
         image_format = st.segmented_control('Image download', ['PNG', 'JPEG'], default='JPEG', key='image_format_selector',
                                             help='File type saved by the camera icon in the top right of each chart.') or 'JPEG'
     theme = c_theme.segmented_control('Theme', ['Light', 'Dark'], default='Dark', key='theme_selector') or 'Dark'
-    c_clear.button('Clear all', width='stretch', key='clear_profiles_button', on_click=clear_profiles, disabled=not P,
-                   help='Remove every profile.')
+    # Clear all asks first: one click in the toolbar must not remove a whole cook.
+    with c_clear.popover('Clear all', width='stretch', disabled=not P):
+        st.markdown(f'**Remove all {len(P)} profile{"s" if len(P) != 1 else ""}?**')
+        st.caption('Their names, roles, probes, offsets, trims and line styles go too. This cannot be undone; '
+                   'export the profiles first to keep them.')
+        st.button(f'Remove all {len(P)} profile{"s" if len(P) != 1 else ""}', type='primary', width='stretch',
+                  key='clear_profiles_button', on_click=clear_profiles, disabled=not P)
 
 if st.session_state.get('import_messages'):
     with notes_area.expander(f"Import notes ({len(st.session_state.import_messages)})", expanded=False):
         for message in st.session_state.import_messages:
-            st.caption(message)
+            st.caption(md(message))
 
 
 
@@ -463,8 +483,9 @@ if pending:
             head = st.columns(widths, gap='small')
             for column, text, tip in zip(head, ['Import', 'File and column', 'Probe', 'Role'],
                                          ['Untick to leave a column out.', '', 'Which probe or device the column comes from. Columns with the same probe share a colour, for example "Typhur 2".',
-                                          'What the column measures. Sets the name in the Excel export; Setpoint also makes it a setpoint.']):
-                column.markdown(f'<div class="import-head" title="{tip}">{text}</div>', unsafe_allow_html=True)
+                                          'What the column measures. Sets the name in the Excel export; Setpoint also makes it a setpoint.\n\n'
+                                          + '\n'.join(f'{role}: {text}' for role, text in ROLE_HELP.items())]):
+                column.markdown(f'<div class="import-head" title="{html.escape(tip)}">{text}</div>', unsafe_allow_html=True)
             for i, p in enumerate(new_profiles):
                 c1, c2, c3, c4 = st.columns(widths, gap='small', vertical_alignment='center')
                 use_key, probe_key, role_key = f'imp_{batch}_{i}_use', f'imp_{batch}_{i}_probe', f'imp_{batch}_{i}_role'
@@ -478,7 +499,7 @@ if pending:
             taken = {p.name for p in P} if pending['keep'] else set()
             names = unique_names([profile_name(str(st.session_state.get(f'imp_{batch}_{i}_probe', '')).strip() or 'Probe',
                                                st.session_state.get(f'imp_{batch}_{i}_role', 'Other')) for i in chosen], taken=taken)
-            st.caption('Will be added as: ' + (', '.join(names) if names else 'nothing, every column is unticked'))
+            st.caption('Will be added as: ' + (md(', '.join(names)) if names else 'nothing, every column is unticked'))
             b1, b2, _ = st.columns([1.3, 0.8, 4.0], gap='small')
             b1.button(f'Add {len(names)} profile(s)', type='primary', width='stretch', key='apply_import', on_click=apply_import, disabled=not names)
             b2.button('Cancel', width='stretch', key='cancel_import', on_click=cancel_import)
@@ -543,11 +564,10 @@ with st.container(border=True, key='profile_details_card'):
         if st.session_state.get(role_key) != selected.role:
             st.session_state[role_key] = selected.role
         st.selectbox('Role', ROLES, key=role_key, on_change=change_role, args=(selected.profile_id, role_key, name_key),
-                     help='What this profile measures. Sets the name in the Excel export. '
-                          'Setpoint: starts dashed, never smoothed, and compared with a probe under Setpoint vs measured.')
+                     help='What this profile measures. Sets the name in the Excel export.\n\n' + ROLE_HELP_TEXT)
     selected.channel, selected.offset_hours, selected.color = channel, offset, color
     if st.session_state.get('rename_error'):
-        st.warning(st.session_state.rename_error)
+        st.warning(md(st.session_state.rename_error))
 
     total_points = len(selected.data)
     current_start, current_end = selected.trim_bounds()
@@ -602,18 +622,20 @@ with st.container(border=True, key='profile_details_card'):
         status.append(f'offset {offset_readout(offset)} (h:mm:ss)')
     if 'typed' in str(selected.metadata.get('start_source', '')).lower():
         status.append('start time typed in Chart-2-Data, check it')
-    st.caption('  |  '.join(s for s in status if s))
+    st.caption(md('  |  '.join(s for s in status if s)))
     if trim_all and st.session_state.get('group_trim_note'):
-        st.caption('No readings inside this window, left as they were: ' + ', '.join(st.session_state.group_trim_note))
+        st.caption('No readings inside this window, left as they were: ' + md(', '.join(st.session_state.group_trim_note)))
 
     if alignment == 'Clock time' and without_clock(visible):
         st.caption('These profiles have no clock times, so they are not shown in Clock alignment: '
-                   + ', '.join(p.name for p in without_clock(visible)) + '. Choose Start, Peak or End to see them.')
+                   + md(', '.join(p.name for p in without_clock(visible))) + '. Choose Start, Peak or End to see them.')
     # Roles shown: chosen under the chart, applied here (the choice is kept in session state by its callback).
     present_roles = [r for r in ROLES if any(p.role == r for p in visible)]
     hidden_roles = [r for r in present_roles if r in st.session_state.get('hidden_roles', set())]
     charted = [p for p in visible if p.role not in hidden_roles]
-    if visible:
+    if visible and not charted:
+        summary = f'All roles hidden ({", ".join(hidden_roles)})  |  choose the roles to show under the chart'
+    elif visible:
         chart_devices = len({p.source_file for p in charted})
         chart_durations = [p.duration_hours for p in charted] or [0.0]
         count = f'{len(charted)} of {len(visible)} profiles' if hidden_roles else f'{len(visible)} profiles'
@@ -661,7 +683,7 @@ with st.container(border=True, key='setpoint_card'):
         skip = k4.number_input('Ignore first (minutes)', min_value=0, max_value=600, value=0, step=5, key='compare_skip', help='Leave out the warm-up phase.')
         result, problem = compare(profile_by_id[setpoint_id], profile_by_id[probe_id], band, smoothing_minutes, skip)
         if problem:
-            st.warning(problem)
+            st.warning(md(problem))
         else:
             m1, m2, m3, m4 = st.columns(4)
             m1.metric('AVERAGE VS SETPOINT', f"{result['mean_diff']:+.1f} °C", 'Probe minus setpoint', delta_color='off')

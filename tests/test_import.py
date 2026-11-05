@@ -417,3 +417,98 @@ class V170Roles(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class MemoryUpload:
+    """An uploaded file made in the test (no file on disk)."""
+    def __init__(self, name, data):
+        self.name, self._bytes = name, data.encode('utf-8') if isinstance(data, str) else data
+
+    def getvalue(self):
+        return self._bytes
+
+
+class V181WideFileWithDropouts(unittest.TestCase):
+    """D1: short rows were placed by trying every combination of columns (minutes for a 26-column file)."""
+
+    def test_wide_file_with_short_rows_imports_fast(self):
+        import time
+        header = 'Time,' + ','.join(f'Probe {i} temp' for i in range(1, 26))
+        rows = [header] + [f'10:{m:02d}:00,' + ','.join(str(60 + 4 * j + m % 2) for j in range(25)) for m in range(6)]
+        rows += [f'10:{m:02d}:00,' + ','.join(str(60 + 4 * j) for j in range(0, 25, 2)) for m in range(6, 12)]   # 13 of 25 values
+        start = time.perf_counter()
+        profiles, messages = load_uploaded_files([MemoryUpload('wide.csv', '\n'.join(rows))])
+        self.assertLess(time.perf_counter() - start, 5)
+        self.assertEqual(len(profiles), 25)
+        self.assertIn('6 row(s) had fewer values than the header', ' '.join(messages))
+        probe_3 = next(p for p in profiles if p.channel == 'Probe 3 temp')            # every second probe still reads its own column
+        self.assertAlmostEqual(probe_3.data.temperature_c.iloc[-1], 68.0)
+
+    def test_same_placement_as_trying_every_combination(self):
+        import itertools
+        import random
+        from profile_loader import _best_placement
+        rng = random.Random(7)
+        for _ in range(1500):
+            n = rng.randint(2, 8); k = rng.randint(1, n)
+            last = [rng.choice([None, float(rng.randint(20, 200))]) for _ in range(n)]
+            values = [rng.choice([float('nan'), float(rng.randint(20, 200))]) for _ in range(k)]
+            cost = lambda cols: sum(abs(v - last[c]) for v, c in zip(values, cols) if last[c] is not None and v == v)  # noqa: E731
+            self.assertEqual(_best_placement(values, last), min(itertools.combinations(range(n), k), key=cost))
+
+
+class V181TimeZones(unittest.TestCase):
+    """D2: US Central (CST) and other common zone names; zone names not recognised are reported."""
+
+    def test_us_central_clock_change_runs_forward(self):
+        from profile_loader import parse_clock
+        times, note = parse_clock(pd.Series(['2026-11-01 01:50:00 CDT', '2026-11-01 01:55:00 CDT',
+                                             '2026-11-01 01:00:00 CST', '2026-11-01 01:05:00 CST']), 'Time')
+        self.assertEqual(list(times.dt.strftime('%H:%M')), ['01:50', '01:55', '02:00', '02:05'])
+        self.assertIn('CDT to CST', note)
+
+    def test_australian_summer_time(self):
+        from profile_loader import parse_clock
+        times, _ = parse_clock(pd.Series(['2026-04-05 02:50:00 AEDT', '2026-04-05 02:00:00 AEST']), 'Time')
+        self.assertEqual(list(times.dt.strftime('%H:%M')), ['02:50', '03:00'])
+
+    def test_unknown_zone_name_is_reported(self):
+        from profile_loader import parse_clock
+        times, note = parse_clock(pd.Series(['2026-11-01 01:50:00 IST', '2026-11-01 01:55:00 IST']), 'Time')
+        self.assertEqual(list(times.dt.strftime('%H:%M')), ['01:50', '01:55'])
+        self.assertIn('time zone IST not recognised', note)
+
+
+class V181ExportHeadersAsText(unittest.TestCase):
+    """A profile or file name starting with '=' became a formula cell in the Excel header."""
+
+    def test_formula_like_name_stays_text(self):
+        import openpyxl
+        profiles, _ = load_uploaded_files([MemoryUpload('=SUM(1,2).csv', (DATA / 'ok_device_cest.csv').read_bytes())])
+        sheet = openpyxl.load_workbook(io.BytesIO(profiles_to_excel(profiles))).active
+        headers = [c for c in sheet[1] if isinstance(c.value, str) and c.value.startswith('=')]
+        self.assertTrue(headers)
+        self.assertTrue(all(c.data_type == 's' for c in headers), [(c.value, c.data_type) for c in headers])
+        self.assertIn('=SUM(1,2)', str(pd.read_excel(io.BytesIO(profiles_to_excel(profiles))).columns[1]))
+
+
+class V181SmallFixes(unittest.TestCase):
+    def test_csv_error_says_why(self):   # D5
+        _, messages = load_uploaded_files([MemoryUpload('broken.csv', 'time,temp\n"10:00,1\n10:01,2\n')])
+        self.assertIn('could not be parsed as CSV (', ' '.join(messages))
+
+    def test_grill_is_a_pit_word(self):   # D9
+        self.assertEqual([default_role(c) for c in ('Grill temp', 'Grill_temp', 'Grill grate', 'Grilled chicken probe')],
+                         ['Pit', 'Pit', 'Grate', 'Meat'])
+
+    def test_upload_limit_is_25_mb(self):
+        config = (ROOT / '.streamlit' / 'config.toml').read_text(encoding='utf-8')
+        self.assertRegex(config, r'(?m)^\[server\][\s\S]*^maxUploadSize = 25$')
+
+    def test_names_escaped_in_charts(self):
+        profiles, _ = load_uploaded_files([MemoryUpload('x<br>y.csv', (DATA / 'ok_device_cest.csv').read_bytes())])
+        settings = {'alignment': 'Original timeline', 'smoothing_minutes': 0, 'theme': 'Dark', 'grid': True, 'legend': True,
+                    'width': 3.5}
+        fig = comparison(profiles, settings)
+        self.assertTrue(all(t.name.startswith('x&lt;br&gt;y') for t in fig.data), [t.name for t in fig.data])
+        self.assertTrue(single(profiles[0], settings).layout.title.text.startswith('x&lt;br&gt;y'))

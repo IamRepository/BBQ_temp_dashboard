@@ -74,6 +74,10 @@ def profiles_to_excel(profiles, interval='1 min'):
             table.to_excel(writer, index=False, sheet_name=name)
             sheet = writer.sheets[name]
             sheet.freeze_panes = 'A2'
+            for cell in sheet[1]:
+                # A header from a profile or file name such as "=SUM(1,2)" would become a formula; keep it as text.
+                if isinstance(cell.value, str) and cell.value.startswith('='):
+                    cell.data_type = 's'
             for index, column in enumerate(table.columns, start=1):
                 letter = sheet.cell(row=1, column=index).column_letter
                 if index == 1 and column == 'Timestamp':

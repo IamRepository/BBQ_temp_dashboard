@@ -2,6 +2,37 @@
 
 All releases of Probe-2-Plot (called Cook Profile Dashboard up to v1.7.6), newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.8.1] - 2026-11-05
+
+Import, export and security fixes from the 28 Oct diff audit (D1, D2, D3, D5, D6, D9, D10) and the 5 Nov audit backlog; Clear all asks first. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Fixed
+- **Wide files with probe dropouts no longer stall the import (D1).** When a row had fewer values than the header, every possible placement of its values was tried: a 26-column file took about 6 s per short row, 30 columns about 3 minutes. The best placement is now found column by column, with the same result (checked against the old method in 1,500 random cases), in well under a millisecond per row.
+- **US time zones (D2).** CST (US Central) was missing, so a US log running from CDT into CST went backwards by an hour. Added CST, Alaska, Hawaii, Australian, New Zealand and Japanese zone names. A zone name the app does not know is now reported in Import notes ("time zone IST not recognised"), instead of being dropped silently.
+- **Excel headers stay text.** A profile or file name starting with "=" (for example a file called "=SUM(1,2).csv") became a formula cell in the export header; it is now saved as text, so Excel and the Brisket Tenderness Analyzer read the name.
+- **Names are shown exactly as written.** File and profile names were read as formatting: HTML such as `<br>` in the chart legend, hover and title, and Markdown, `$...$` maths or `:colour[...]` in captions, notes and warnings. They are now escaped everywhere they are shown.
+- **Clear all starts the next cook clean.** Roles switched off under the chart, the Roles shown choice, Import notes and the trim note of the removed cook no longer carry over to the next import.
+- **A CSV that cannot be read says why (D5),** for example "could not be parsed as CSV (unexpected end of data)".
+- **All roles switched off (D6):** the chart summary now says "All roles hidden (...)  |  choose the roles to show under the chart" instead of "0 of 5 profiles | 0 devices | 0.0 - 0.0 h".
+
+### Changed
+- **Clear all asks first.** It opens a small panel: "Remove all 5 profiles?", what is lost, and a "Remove all 5 profiles" button. Nothing is removed until that button is pressed.
+- **Upload limit 25 MB per file** (was Streamlit's 200 MB), set in the new `.streamlit/config.toml`. An 18-hour cook logged every second is about 4 MB.
+- **Streamlit 1.66.1 and Pillow 13.0.0 (D3).** Streamlit 1.65.0 kept the Pillow image library at 12.3.0, which has known security problems. Pillow is now pinned too. Page styling, panels, sliders and contrast re-checked in the browser on 1.66.1 and 1.60.
+- **"Grill" is a pit word (D9):** a column such as "Grill temp" now starts with the role Pit (was Other). "Grill grate" stays Grate and "Grilled chicken probe" stays Meat.
+- **Role help:** the explanation of every role (written for v1.7.0 but never shown) is now the help text of the Role select in Profile details and of the Role column in Check the import.
+- README: test count, the Role per profile (the setpoint tick box went in v1.7.0), the import assumptions (Check the import exists since v1.7.0), time zones, the upload limit and the pinned versions.
+
+### Removed
+- Unused code: the `TIME_WORDS` list and the `color_start` argument of `dataframe_to_profiles` (D10; colours are set per probe in Check the import).
+
+### Tests
+- 14 more regression tests (104 in all): a 25-column file with 6 short rows, the new placement against the old one, US and Australian clock changes, an unknown zone name, a "=SUM(1,2)" header, a CSV error message, the grill rule, the upload limit, escaped names in charts and captions, Clear all (confirmation, state reset, next cook shows every role), all roles hidden, and the role help. The tests now read captions as shown on the page.
+- All tests pass on Streamlit 1.66.1 and 1.60.0. Browser contrast scan in dark and light mode with every panel open: no new text below 4.5:1.
+
+### Upgrade note
+- **Reboot the app on Streamlit Community Cloud** after deploying (Manage app, three dots, Reboot app): it installs Streamlit 1.66.1 and Pillow 13.0.0 and reloads `profile_loader.py`, `chart_builder.py`, `export_utils.py` and `roles.py`.
+
 ## [1.8.0] - 2026-11-04
 
 No sidebar: a Start card and a toolbar under the page title. Commit [`7fe1339`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/7fe1339). Chosen by the user from four drawn options (option A), then reviewed in the app on branch design/v1.8.0-toolbar.
@@ -530,6 +561,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.8.1]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/7fe1339...COMMIT
 [1.8.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d984c6d...7fe1339
 [1.7.8]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/5a0f5dc...d984c6d
 [1.7.7]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/2ea9b11...5a0f5dc

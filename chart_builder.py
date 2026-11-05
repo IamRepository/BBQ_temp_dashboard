@@ -179,13 +179,14 @@ def comparison(profiles, settings, subtitle=None):
         y = _y(profile, frame, settings)
         x = _x(profile, settings['alignment'], y)
         keep = thin(x, y)
-        label = f'{profile.name} (setpoint)' if profile.is_setpoint else profile.name
+        # Names come from files and users; Plotly would draw <b>, <br> or <a> in them, so they are escaped.
+        label = html.escape(f'{profile.name} (setpoint)' if profile.is_setpoint else profile.name)
         role = getattr(profile, 'role', '')
         group = {'legendgroup': role, 'legendgrouptitle': {'text': role, 'font': {'size': round(12 * text_scale(settings)), 'color': colors['text']}}} if role else {}
         fig.add_trace(go.Scatter(
             x=_pick(x, keep), y=_pick(y, keep), mode='lines', name=label,
             line=_line(profile, settings),
-            meta=[profile.name, profile.channel],
+            meta=[html.escape(profile.name), html.escape(str(profile.channel))],
             hovertemplate='<b>%{meta[0]}</b><br>Channel: %{meta[1]}<br>Temperature: %{y:.1f} °C<br>Time: %{x}<extra></extra>',
             **group,
         ))
@@ -211,11 +212,11 @@ def single(profile, settings):
         ))
     keep = thin(x, y)
     fig.add_trace(go.Scatter(
-        x=_pick(x, keep), y=_pick(y, keep), mode='lines', name=profile.name,
+        x=_pick(x, keep), y=_pick(y, keep), mode='lines', name=html.escape(profile.name),
         line=_line(profile, settings),
         hovertemplate='Temperature: %{y:.1f} °C<br>Time: %{x}<extra></extra>',
     ))
-    return _target(_layout(fig, settings, profile.name), settings)
+    return _target(_layout(fig, settings, html.escape(profile.name)), settings)
 
 
 def deviation(result, settings):

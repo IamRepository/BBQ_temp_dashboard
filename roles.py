@@ -50,7 +50,7 @@ _DEFAULTS = [
     ('Hold', r'\bhold|holding|environment'),
     ('Ambient', r'ambient'),
     ('Grate', r'grate'),
-    ('Pit', r'cavity|controller|\bpit\b|\bpid\b|smoker|chamber'),
+    ('Pit', r'cavity|controller|\bpit\b|\bpid\b|smoker|chamber|\bgrill(?!ed)'),   # "Grill temp" (Weber, Traeger): v1.8.1
     ('Meat', r'meat|internal|probe|food|brisket|core|kern'),
 ]
 

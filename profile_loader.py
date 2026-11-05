@@ -1,4 +1,4 @@
-import csv, hashlib, io, itertools, re, uuid
+import csv, hashlib, io, re, uuid
 from pathlib import Path
 import pandas as pd
 from models import CookProfile
@@ -7,7 +7,6 @@ from models import CookProfile
 # backgrounds: distinguishable with colour-blindness, at least 3:1 contrast on both. More than 8 hues cannot be
 # told apart reliably, so a 9th profile reuses the least-used colour.
 COLORS=['#3987e5','#d95926','#199e70','#c98500','#d55181','#008300','#9085e9','#e66767']
-TIME_WORDS=('time','date','timestamp','datetime','elapsed','hour','minute')
 TEMP_WORDS=('temp','temperature','probe','meat','point','flat','pit','ambient','cavity','grate')
 
 def _num(s):
@@ -23,14 +22,37 @@ def _to_float(text,decimal):
     if decimal==',': text=text.replace('.','').replace(',','.')
     return float(text)
 
+def _best_placement(values,last):
+    """The columns for a short row's values, in order, closest to each column's last reading.
+
+    Same answer as trying every placement (the first of equally good ones), but found column by column
+    (dynamic programming), so a 30-column file takes microseconds per row instead of minutes."""
+    k,n=len(values),len(last)
+    def step(i,c):
+        v=values[i]
+        return abs(v-last[c]) if last[c] is not None and v==v else 0.0
+    # rest[i][c]: lowest cost of placing values i.. into columns c.. (inf when they do not fit)
+    inf=float('inf')
+    rest=[[inf]*(n+1) for _ in range(k+1)]
+    for c in range(n+1): rest[k][c]=0.0
+    for i in range(k-1,-1,-1):
+        for c in range(n-1,-1,-1):
+            take=step(i,c)+rest[i+1][c+1]
+            rest[i][c]=min(take,rest[i][c+1])
+    cols=[]; c=0
+    for i in range(k):
+        while step(i,c)+rest[i+1][c+1]>rest[i][c]+1e-9:   # earliest column that keeps the lowest total
+            c+=1
+        cols.append(c); c+=1
+    return tuple(cols)
+
 def _realign_short_rows(text):
     """Handle loggers that drop a reading when a probe disconnects.
 
     Some devices write fewer fields on those rows (e.g. header has 3 temperature
     columns, a row has only 2). Reading them by position can put a value in the
-    wrong column. For each short row we try every way of placing the values into
-    the columns (keeping their order) and choose the placement closest to each
-    column's last known reading. Returns (DataFrame, short_rows, moved_rows), or
+    wrong column. For each short row we find the placement of the values into the
+    columns (keeping their order) closest to each column's last known reading. Returns (DataFrame, short_rows, moved_rows), or
     None when the file is not ragged / cannot be handled safely.
     """
     header_line=text.lstrip('\ufeff').splitlines()[0] if text.strip() else ''
@@ -50,7 +72,7 @@ def _realign_short_rows(text):
             if len(values)<width-1:
                 short+=1
                 def cost(cols): return sum(abs(v-last[c]) for v,c in zip(values,cols) if last[c] is not None and v==v)
-                best=min(itertools.combinations(range(width-1),len(values)),key=cost)
+                best=_best_placement(values,last)
                 if cost(best)<0.5*cost(tuple(slots)) and cost(tuple(slots))-cost(best)>3.0:
                     slots=list(best); moved+=1
             row=[float('nan')]*(width-1)
@@ -65,7 +87,8 @@ def _realign_short_rows(text):
 # ---- Time column -------------------------------------------------------------------------------------------
 TIME_HEADER=re.compile(r'time|date|elapsed|hour|minute|second|\bzeit\b|\bdatum\b|\btid\b|\bdato\b',re.I)
 ZONE_HOURS={'UTC':0,'GMT':0,'Z':0,'WET':0,'WEST':1,'BST':1,'CET':1,'CEST':2,'EET':2,'EEST':3,'MSK':3,
-            'EST':-5,'EDT':-4,'CDT':-5,'MST':-7,'MDT':-6,'PST':-8,'PDT':-7}
+            'EST':-5,'EDT':-4,'CST':-6,'CDT':-5,'MST':-7,'MDT':-6,'PST':-8,'PDT':-7,   # CST read as US Central (not China)
+            'AKST':-9,'AKDT':-8,'HST':-10,'AWST':8,'ACST':9.5,'ACDT':10.5,'AEST':10,'AEDT':11,'NZST':12,'NZDT':13,'JST':9}
 ZONE_NAME=re.compile(r'(?<=\d)\s+([A-Z]{3,5})\s*$')                                  # 15:49:31 CEST (AM/PM untouched)
 ZONE_OFFSET=re.compile(r'(\d{1,2}:\d{2}(?::\d{2}(?:\.\d+)?)?)\s*(?:UTC|GMT)?\s*([+-])(\d{1,2})(?::?(\d{2}))?\s*$')  # 15:49:31+02:00 (a time must come first)
 ZONE_Z=re.compile(r'(?<=\d)Z\s*$')                                                    # 13:49:31Z
@@ -91,8 +114,8 @@ def _zone_hours(text):
     if known.any():
         hours[known]=name[known].map(ZONE_HOURS).astype(float)
     unknown=name.notna()&~name.isin(list(ZONE_HOURS))
-    text[known|unknown]=text[known|unknown].str.replace(ZONE_NAME,'',regex=True)   # unknown names are dropped, as before
-    return text.str.strip(),hours
+    text[known|unknown]=text[known|unknown].str.replace(ZONE_NAME,'',regex=True)   # unknown names are dropped, and reported
+    return text.str.strip(),hours,list(dict.fromkeys(name[unknown].dropna()))
 
 def _parse_text_times(text):
     """Year-first text as year-month-day; anything else as day-month-year (never the other way round)."""
@@ -154,10 +177,17 @@ def parse_clock(values,header=''):
         if TIME_HEADER.search(header) and len(n) and n.min()>=20000 and n.max()<=100000 and n.max()-n.min()<60:
             return pd.to_datetime(pd.to_numeric(values,errors='coerce'),unit='D',origin='1899-12-30').dt.round('ms'),''
         return None
-    text,hours=_zone_hours(values)
+    text,hours,unknown=_zone_hours(values)
     zone_labels=values.astype('string').str.strip().str.extract(r'([A-Z]{2,5}|[+-]\d{1,2}:?\d{2})\s*$')[0]
     times=_parse_text_times(text)
-    return _one_continuous_clock(times,hours,zone_labels)
+    times,note=_one_continuous_clock(times,hours,zone_labels)
+    if unknown:
+        # A zone name the loader does not know is ignored; say so, because a clock change in it is not corrected.
+        names=', '.join(unknown[:4])
+        extra=(f'time zone {names} not recognised; those times are read as written, so a clock change during the cook '
+               f'is not corrected.')
+        note=f'{note} {extra[0].upper()}{extra[1:]}' if note else extra
+    return times,note
 
 def _elapsed_hours(values,label):
     n=_num(values)
@@ -225,7 +255,7 @@ def _start_source(df):
             return (values.mode().iloc[0] if len(values) else ''), df.drop(columns=[c])
     return '', df
 
-def dataframe_to_profiles(df,source,sheet=None,color_start=0):
+def dataframe_to_profiles(df,source,sheet=None):
     df=df.rename(columns=lambda c: str(c).strip()).dropna(how='all').dropna(axis=1,how='all')
     start_source,df=_start_source(df)
     elapsed,timestamp,timecol,clock_note=_time(df)
@@ -237,7 +267,7 @@ def dataframe_to_profiles(df,source,sheet=None,color_start=0):
         out=out.dropna(subset=['elapsed_hours','temperature_c']).sort_values('elapsed_hours').drop_duplicates('elapsed_hours',keep='last')
         if len(out)<2: continue
         base=Path(source).stem; full=f'{base} - {sheet} - {name}' if sheet else f'{base} - {name}'
-        profiles.append(CookProfile(uuid.uuid4().hex,full,source,name,COLORS[(color_start+i)%len(COLORS)],out.reset_index(drop=True),
+        profiles.append(CookProfile(uuid.uuid4().hex,full,source,name,COLORS[i%len(COLORS)],out.reset_index(drop=True),
                                     metadata={'sheet':sheet or '', 'time_column':timecol, 'start_source':start_source}))
         if note: notes.append(note)
     where=f'{source} ({sheet})' if sheet else source
@@ -262,17 +292,19 @@ def _read_csv(raw,name):
         table,short,moved=ragged
         note=f"{name}: {short} row(s) had fewer values than the header (probe dropouts)"+(f"; {moved} were re-assigned to the matching probe column." if moved else "; none needed re-assigning.")
         return table,note
+    problem=None
     for encoding in ('utf-8-sig','utf-8','latin-1'):
         try: return pd.read_csv(io.BytesIO(raw),encoding=encoding,sep=None,engine='python'),note
-        except Exception: pass
-    raise ValueError('the file could not be parsed as CSV')
+        except Exception as exc: problem=exc
+    raise ValueError(f'the file could not be parsed as CSV ({str(problem).strip() or type(problem).__name__})')
 
 def file_fingerprint(raw):
     """Identifies a file by its content, so the same file is not imported twice."""
     return hashlib.sha1(raw).hexdigest()
 
 def assign_colours(new,existing):
-    """Give each new profile the first colour not yet in use; past 8 profiles, the least-used colour."""
+    """Give each new profile the first colour not yet in use; past 8 profiles, the least-used colour.
+    (In the app, Check the import then gives one colour per probe: roles.probe_colours.)"""
     counts={c:0 for c in COLORS}
     for p in existing:
         if p.color in counts: counts[p.color]+=1
@@ -301,7 +333,7 @@ def load_uploaded_files(files,existing=None):
                 tables=pd.read_excel(io.BytesIO(raw),sheet_name=None,engine='xlrd' if ext=='.xls' else 'openpyxl')
                 if len(tables)==1: tables={None:next(iter(tables.values()))}   # one sheet: no sheet name in profile names
             for sheet,df in tables.items():
-                p,m=dataframe_to_profiles(df,f.name,sheet,0)
+                p,m=dataframe_to_profiles(df,f.name,sheet)
                 for profile in p: profile.metadata['fingerprint']=fingerprint
                 result.extend(p); messages.append(m)
         except Exception as exc:

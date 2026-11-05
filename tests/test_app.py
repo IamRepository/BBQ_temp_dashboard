@@ -5,6 +5,8 @@ Every example file in tests/data is loaded into the page, which must build witho
 error, and the main interactions (trim, reset, rename, remove, setpoint comparison) are
 exercised on a small made-up cook.
 """
+import json
+import re
 import sys
 import unittest
 from pathlib import Path
@@ -17,6 +19,12 @@ from streamlit.testing.v1 import AppTest  # noqa: E402
 from profile_loader import load_uploaded_files  # noqa: E402
 
 APP = str(ROOT / 'app.py')
+
+
+
+def captions(at):
+    """Caption texts as shown on the page (app.md backslash-escapes Markdown characters in names since v1.8.1)."""
+    return [re.sub(r'\\(.)', r'\1', c.value) for c in at.caption]
 
 
 class Upload:
@@ -116,7 +124,7 @@ class V166Interactions(unittest.TestCase):
         self.assertEqual(problems(self.at), [])
         profile = next(p for p in self.at.session_state['profiles'] if p.profile_id == selected)
         self.assertAlmostEqual(profile.offset_hours, 3.5 / 60)
-        self.assertTrue(any('+0:03:30' in c.value for c in self.at.caption), [c.value for c in self.at.caption])
+        self.assertTrue(any('+0:03:30' in c for c in captions(self.at)), [c for c in captions(self.at)])
 
     def test_rename_warning_clears_on_another_profile(self):   # L1
         names = [p.name for p in self.profiles]
@@ -137,7 +145,7 @@ class V166Interactions(unittest.TestCase):
         at.session_state['alignment_selector'] = 'Clock'
         at.run()
         self.assertEqual(problems(at), [])
-        notes = ' '.join(c.value for c in at.caption)
+        notes = ' '.join(c for c in captions(at))
         self.assertIn('not shown in Clock alignment', notes)
         self.assertIn(elapsed[0].name, notes)
 
@@ -164,8 +172,8 @@ class V167Interactions(unittest.TestCase):
         shown = {p.channel: len(p.plotted_data) for p in at.session_state['profiles']}
         self.assertEqual(shown['Setpoint'], 6)
         self.assertEqual(shown['Probe 1'], 6)
-        self.assertTrue(any('left as they were' in c.value for c in at.caption))   # the 15:34 file has nothing inside
-        self.assertTrue(any('Window: 10:00 to 10:05 on 03/10/2026, all 5 profiles' in c.value for c in at.caption), [c.value for c in at.caption])
+        self.assertTrue(any('left as they were' in c for c in captions(at)))   # the 15:34 file has nothing inside
+        self.assertTrue(any('Window: 10:00 to 10:05 on 03/10/2026, all 5 profiles' in c for c in captions(at)), [c for c in captions(at)])
         at.button(key='reset_all_trims').click().run()
         self.assertTrue(all(len(p.plotted_data) == len(p.data) for p in at.session_state['profiles']))
 
@@ -181,7 +189,7 @@ class V167Interactions(unittest.TestCase):
 
     def test_full_profile_name_under_the_box(self):   # L6: since 1.6.9 the status line starts with the full name
         name = self.profiles[0].name
-        self.assertTrue(any(c.value.startswith(name + '  |  ') for c in self.at.caption), [c.value for c in self.at.caption])
+        self.assertTrue(any(c.startswith(name + '  |  ') for c in captions(self.at)), [c for c in captions(self.at)])
 
     def test_download_button_present(self):   # M6: the file is built on click
         self.assertEqual(self.at.get('download_button')[0].proto.label, 'Download Excel file')
@@ -232,7 +240,7 @@ class V169CompactLayout(unittest.TestCase):
         at = self.at
         selected = at.session_state['selected_profile_id']
         at.number_input(key=f'edit_{selected}_offset_min').set_value(3.5).run()
-        status = next(c.value for c in at.caption if c.value.startswith(self.profiles[0].name))
+        status = next(c for c in captions(at) if c.startswith(self.profiles[0].name))
         self.assertIn('ok_device_cest.csv', status)
         self.assertIn('samples shown', status)
         self.assertIn('offset +0:03:30 (h:mm:ss)', status)
@@ -326,7 +334,7 @@ class V170ImportReview(unittest.TestCase):
         self.assertEqual(len([c for c in at.checkbox if c.key and c.key.startswith('imp_test_')]), 7)
         self.assertEqual(at.selectbox(key='imp_test_0_role').value, 'Ambient')
         self.assertEqual(at.text_input(key='imp_test_5_probe').value, 'ok_device_cest Probe 1')
-        preview = next(c.value for c in at.caption if c.value.startswith('Will be added as'))
+        preview = next(c for c in captions(at) if c.startswith('Will be added as'))
         for name in ('c2d_typhur_probe_1 - Ambient', 'c2d_typhur_probe_1 - Meat', 'c2d_typhur_probe_2 - Ambient', 'ok_device_cest - Pit',
                      'ok_device_cest Probe 1 - Meat', 'ok_device_cest Probe 2 - Meat'):
             self.assertIn(name, preview)
@@ -353,7 +361,7 @@ class V170ImportReview(unittest.TestCase):
         at.checkbox(key='imp_test_0_use').uncheck()                    # leave out probe 1 ambient
         at.selectbox(key='imp_test_1_role').set_value('Point')
         at.text_input(key='imp_test_1_probe').set_value('Typhur 1').run()
-        self.assertIn('Typhur 1 - Point', next(c.value for c in at.caption if c.value.startswith('Will be added as')))
+        self.assertIn('Typhur 1 - Point', next(c for c in captions(at) if c.startswith('Will be added as')))
         at.button(key='apply_import').click().run()
         names = [p.name for p in at.session_state['profiles']]
         self.assertEqual(len(names), 6)
@@ -373,7 +381,7 @@ class V170ImportReview(unittest.TestCase):
         at.button(key='apply_import').click().run()
         typed = next(p for p in at.session_state['profiles'] if p.metadata.get('start_source') == 'typed')
         at.selectbox(key='selected_profile_id').set_value(typed.profile_id).run()
-        self.assertTrue(any('start time typed in Chart-2-Data, check it' in c.value for c in at.caption))
+        self.assertTrue(any('start time typed in Chart-2-Data, check it' in c for c in captions(at)))
 
     def test_role_change_renames_and_sets_the_setpoint(self):
         at = self.at
@@ -537,7 +545,7 @@ class V180Toolbar(unittest.TestCase):
         self.assertEqual(len(at.sidebar.children), 0)
         self.assertTrue(any('Start: add your cook files' in m.value for m in at.markdown))
         self.assertEqual(len(at.get('file_uploader')), 1)
-        self.assertEqual([p.proto.popover.label for p in at.get('popover')], ['Chart options'])     # no Add files before the first import
+        self.assertEqual([p.proto.popover.label for p in at.get('popover')], ['Chart options', 'Clear all'])     # no Add files before the first import
         self.assertTrue(at.button(key='clear_profiles_button').disabled)
 
     def test_toolbar_after_import(self):
@@ -545,7 +553,7 @@ class V180Toolbar(unittest.TestCase):
         at = page(profiles)
         self.assertEqual(problems(at), [])
         self.assertFalse(any('Start: add your cook files' in m.value for m in at.markdown))
-        self.assertEqual([p.proto.popover.label for p in at.get('popover')], ['Add files', 'Chart options'])
+        self.assertEqual([p.proto.popover.label for p in at.get('popover')], ['Add files', 'Chart options', 'Clear all'])
         self.assertEqual(len(at.get('file_uploader')), 1)                                   # inside Add files
         for key in ('alignment_selector', 'smoothing_selector', 'theme_selector', 'chart_text_size', 'image_format_selector'):
             self.assertTrue(any(w.key == key for w in at.get('button_group')), key)
@@ -560,3 +568,53 @@ class V180Toolbar(unittest.TestCase):
         at.run()
         self.assertTrue(any(e.label == 'Import notes (2)' for e in at.expander))
 
+
+
+class V181ClearAllAndNames(unittest.TestCase):
+    """v1.8.1: Clear all asks first and starts the next cook clean; names are shown exactly as written."""
+
+    def setUp(self):
+        self.profiles, _ = load_uploaded_files([Upload(DATA / 'c2d_typhur_probe_1.csv'), Upload(DATA / 'ok_device_cest.csv')])
+        for p in self.profiles:
+            p.role = 'Ambient' if 'Ambient' in p.channel else 'Pit' if 'cavity' in p.channel else 'Meat'
+
+    def pills(self, at):
+        return next(g for g in at.get('button_group') if str(g.key).startswith('roles_shown_'))
+
+    def test_clear_all_confirms_and_resets_state(self):
+        at = page(self.profiles)
+        self.assertEqual(at.button(key='clear_profiles_button').label, f'Remove all {len(self.profiles)} profiles')
+        self.pills(at).set_value(['Ambient', 'Pit']).run()                      # Meat hidden
+        at.session_state['import_messages'] = ['old note']
+        at.run()
+        at.button(key='clear_profiles_button').click().run()
+        self.assertEqual(problems(at), [])
+        self.assertEqual(at.session_state['profiles'], [])
+        for key in ('hidden_roles', 'import_messages', 'group_trim_note'):
+            self.assertNotIn(key, at.session_state)
+        self.assertFalse(any(e.label.startswith('Import notes') for e in at.expander))
+        at.session_state['profiles'] = list(self.profiles)                        # the next cook shows every role
+        at.session_state['visible_profile_ids'] = [p.profile_id for p in self.profiles]
+        at.run()
+        self.assertEqual(sorted(self.pills(at).value), ['Ambient', 'Meat', 'Pit'])
+
+    def test_all_roles_hidden_says_so(self):
+        at = page(self.profiles)
+        self.pills(at).set_value([]).run()
+        self.assertEqual(problems(at), [])
+        spec = json.loads(at.get('plotly_chart')[0].proto.spec)
+        self.assertTrue(spec['layout']['title']['subtitle']['text'].startswith('All roles hidden'))
+
+    def test_names_shown_as_written_in_captions(self):
+        self.profiles[0].name = 'Typhur_1 [x](y) $5$'
+        at = page(self.profiles)
+        at.selectbox(key='selected_profile_id').set_value(self.profiles[0].profile_id).run()
+        raw = next(c.value for c in at.caption if 'samples shown' in c.value)
+        self.assertTrue(raw.startswith(r'Typhur\_1 \[x\]\(y\) \$5\$'), raw)
+        self.assertTrue(captions(at) and any(c.startswith('Typhur_1 [x](y) $5$') for c in captions(at)))
+
+    def test_role_help_explains_every_role(self):
+        at = page(self.profiles)
+        role_select = next(s for s in at.selectbox if str(s.key).endswith('_role'))
+        for role in ('Ambient', 'Grate', 'Pit', 'Setpoint'):
+            self.assertIn(f'**{role}**', role_select.help)

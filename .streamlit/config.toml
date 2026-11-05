@@ -1,0 +1,4 @@
+# Probe-2-Plot server settings (read by Streamlit locally and on Streamlit Community Cloud).
+[server]
+# Largest file accepted by the upload box, in MB. An 18-hour cook logged every second is about 4 MB as CSV.
+maxUploadSize = 25
