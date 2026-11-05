@@ -4,7 +4,7 @@ All releases of Probe-2-Plot (called Cook Profile Dashboard up to v1.7.6), newes
 
 ## [1.8.2] - 2026-11-05
 
-The rest of the 28 Oct diff audit (D4, D7, D8, D11 in part) and the legend item from the 5 Nov audit. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+The rest of the 28 Oct diff audit (D4, D7, D8, D11 in part) and the legend item from the 5 Nov audit. Commit [`47ce58e`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/47ce58e).
 
 ### Added
 - **Probe field in Profile details (D8).** The probe a profile comes from could only be set in Check the import. It can now be changed at any time, between Display name and Channel. Colour follows the probe: type the name of a probe already on the dashboard to take its colour, or a new name to give the profile its own unused colour. A display name still in the "<probe> - <role>" form follows the new probe ("Typhur 1 - Ambient"). A blank entry is ignored.
@@ -584,7 +584,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
-[1.8.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/ee3b467...COMMIT
+[1.8.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/ee3b467...47ce58e
 [1.8.1]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/7fe1339...ee3b467
 [1.8.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d984c6d...7fe1339
 [1.7.8]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/5a0f5dc...d984c6d
