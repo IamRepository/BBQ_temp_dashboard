@@ -511,7 +511,10 @@ if pending:
                                          ['Untick to leave a column out.', '', 'Which probe or device the column comes from. Columns with the same probe share a colour, for example "Typhur 2".',
                                           'What the column measures. Sets the name in the Excel export; Setpoint also makes it a setpoint.\n\n'
                                           + '\n'.join(f'{role}: {text}' for role, text in ROLE_HELP.items())]):
-                column.markdown(f'<div class="import-head" title="{html.escape(tip)}">{text}</div>', unsafe_allow_html=True)
+                # Line breaks in the tooltip are written as &#10;: a real blank line would end the HTML block in
+                # Markdown and print the rest of the tooltip on the page (v1.8.1 bug, fixed in v1.8.3).
+                title = html.escape(tip).replace('\n', '&#10;')
+                column.markdown(f'<div class="import-head" title="{title}">{text}</div>', unsafe_allow_html=True)
             for i, p in enumerate(new_profiles):
                 c1, c2, c3, c4 = st.columns(widths, gap='small', vertical_alignment='center')
                 use_key, probe_key, role_key = f'imp_{batch}_{i}_use', f'imp_{batch}_{i}_probe', f'imp_{batch}_{i}_role'

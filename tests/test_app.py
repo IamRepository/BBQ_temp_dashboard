@@ -667,3 +667,22 @@ class V182ProbeField(unittest.TestCase):
         self.at.text_input(key=f'edit_{p.profile_id}_probe').set_value('  ').run()
         self.assertEqual(self.at.text_input(key=f'edit_{p.profile_id}_probe').value, 'c2d_typhur_probe_1')
 
+
+
+class V183ImportHeaderTooltips(unittest.TestCase):
+    """v1.8.1 put the role explanations, with blank lines, into the Role header's tooltip: the blank line ended the HTML
+    block, so the explanations were printed across the Check the import card and the header became '">Role'."""
+
+    def test_headers_are_one_line_of_html(self):
+        profiles, _ = load_uploaded_files([Upload(DATA / 'c2d_typhur_probe_1.csv')])
+        at = page([])
+        at.session_state['pending_import'] = {'profiles': profiles, 'messages': [], 'keep': True, 'batch': 'test'}
+        at.run()
+        heads = [m.value for m in at.markdown if 'class="import-head"' in m.value]
+        self.assertEqual(len(heads), 4)
+        for head in heads:
+            self.assertNotIn('\n', head)
+            self.assertRegex(head, r'^<div class="import-head" title="[^"<>]*">[^<>"]+</div>$')
+        role = next(h for h in heads if h.endswith('>Role</div>'))
+        self.assertIn('Ambient: Air right next to the meat', role)
+        self.assertIn('&#10;', role)

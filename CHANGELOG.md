@@ -2,6 +2,14 @@
 
 All releases of Probe-2-Plot (called Cook Profile Dashboard up to v1.7.6), newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.8.3] - 2026-11-06
+
+Fix for the Check the import card. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Fixed
+- **Check the import: the role explanations were printed across the card.** v1.8.1 put an explanation of every role into the tooltip of the ROLE column header. Its blank line ended the header's HTML, so the whole text was shown in the header row, pushing the columns down, and the header read `">Role`. Line breaks in the tooltip are now written as HTML line breaks: the header is one line again, and the explanations show, one role per line, when you point at ROLE.
+- 1 more regression test (112 in all): every header of the card is one line of HTML, and the ROLE tooltip still holds the explanations. It fails on v1.8.2. All tests pass on Streamlit 1.66.1 and 1.60.0; checked in the browser on both.
+
 ## [1.8.2] - 2026-11-05
 
 The rest of the 28 Oct diff audit (D4, D7, D8, D11 in part) and the legend item from the 5 Nov audit. Commit [`47ce58e`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/47ce58e).
@@ -584,6 +592,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.8.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/47ce58e...COMMIT
 [1.8.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/ee3b467...47ce58e
 [1.8.1]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/7fe1339...ee3b467
 [1.8.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d984c6d...7fe1339
