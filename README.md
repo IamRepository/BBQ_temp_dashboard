@@ -65,3 +65,7 @@ There are 111 tests. `tests/test_import.py` checks file import against the examp
 - Each temperature column is offered as one profile in Check the import, where columns can be left out and given a role and probe before anything is added.
 - Time zone names (CET/CEST, US and Australian zones and others) and UTC offsets are put on one continuous clock; a zone name that is not recognised is reported in Import notes.
 - Files up to 25 MB each (set in `.streamlit/config.toml`); an 18-hour cook logged every second is about 4 MB.
+
+## Licence
+
+Copyright © 2026 Imran Abdul-Majid. All rights reserved. No licence is granted to copy, change, distribute or use this code; see [LICENSE](LICENSE).
