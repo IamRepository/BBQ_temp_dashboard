@@ -468,7 +468,7 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 [data-baseweb="tag"] span,[data-testid="stMultiSelect"] [data-tag] span {{color:{colors['tag_text']}!important;font-weight:600!important;}}
 [data-baseweb="tag"] svg,[data-testid="stMultiSelect"] [data-tag] svg {{color:{colors['muted']}!important;fill:{colors['muted']}!important;}}
 [data-baseweb="select"] {{color:var(--text)!important;}}
-[data-testid="stSelectbox"] div:has(> input),[data-testid="stMultiSelect"] div:has(> input),[data-testid="stNumberInput"] div:has(> input),[data-testid="stTextInputRootElement"] {{background:var(--card-alt)!important;border-color:var(--border)!important;border-radius:10px!important;}}
+[data-testid="stMultiSelect"] div:has(> [data-testid="stMultiSelectTagsContainer"]),[data-testid="stSelectbox"] div:has(> input),[data-testid="stMultiSelect"] div:has(> input),[data-testid="stNumberInput"] div:has(> input),[data-testid="stTextInputRootElement"] {{background:var(--card-alt)!important;border-color:var(--border)!important;border-radius:10px!important;}}
 [data-testid="stSelectbox"] input,[data-testid="stNumberInput"] input,[data-testid="stTextInputField"] {{color:var(--text)!important;-webkit-text-fill-color:var(--text)!important;}}
 [data-testid="stTooltipIcon"],[data-testid="stNumberInput"] button {{color:var(--muted)!important;}}
 [data-testid="stTooltipIcon"] svg,[data-testid="stNumberInput"] button svg {{color:var(--muted)!important;fill:var(--muted)!important;}}
@@ -561,13 +561,6 @@ durations = [p.duration_hours for p in visible]
 mins = [p.minimum_c for p in visible]
 maxs = [p.maximum_c for p in visible]
 
-c1, c2, c3, c4 = st.columns(4)
-c1.metric('PROFILES', len(visible), f'{len(P)} loaded', delta_color='off')
-c2.metric('PROBES', probes, f'From {files} file{"" if files == 1 else "s"}', delta_color='off')
-c3.metric('DURATION RANGE', f'{min(durations):.1f} - {max(durations):.1f} h' if durations else 'No data', 'Visible profiles', delta_color='off')
-c4.metric('TEMPERATURE RANGE', f'{min(mins):.1f} - {max(maxs):.1f} °C' if mins else 'No data', 'Visible profiles', delta_color='off')
-
-st.write('')
 # Profile details and the comparison chart share one card, so a change to a profile is seen in the chart at once.
 with st.container(border=True, key='profile_details_card'):
     st.markdown('<div class="card-title compact">Profile details</div>', unsafe_allow_html=True)
@@ -703,6 +696,14 @@ with st.container(border=True, key='profile_details_card'):
     # The file is built only when the button is clicked, not on every click elsewhere on the page.
     e2.download_button('Download Excel file', (lambda: profiles_to_excel(visible, export_interval)) if visible else b'', export_filename(visible),
                        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', width='stretch', disabled=not visible, key='download_visible_profiles')
+
+# Overview cards under the comparison chart (v1.8.4, owner's request): the toolbar sits right above the chart card.
+st.write('')
+c1, c2, c3, c4 = st.columns(4)
+c1.metric('PROFILES', len(visible), f'{len(P)} loaded', delta_color='off')
+c2.metric('PROBES', probes, f'From {files} file{"" if files == 1 else "s"}', delta_color='off')
+c3.metric('DURATION RANGE', f'{min(durations):.1f} - {max(durations):.1f} h' if durations else 'No data', 'Visible profiles', delta_color='off')
+c4.metric('TEMPERATURE RANGE', f'{min(mins):.1f} - {max(maxs):.1f} °C' if mins else 'No data', 'Visible profiles', delta_color='off')
 
 st.write('')
 setpoints = [p for p in P if p.is_setpoint]

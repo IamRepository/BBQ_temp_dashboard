@@ -686,3 +686,39 @@ class V183ImportHeaderTooltips(unittest.TestCase):
         role = next(h for h in heads if h.endswith('>Role</div>'))
         self.assertIn('Ambient: Air right next to the meat', role)
         self.assertIn('&#10;', role)
+
+
+class V184CardsUnderTheChart(unittest.TestCase):
+    """Owner's request (6 Nov 2026): the overview cards sit under the comparison chart, so the toolbar is right above
+    the Profile details and chart card."""
+
+    def order(self, at):
+        out = []
+
+        def walk(node):
+            for child in getattr(node, 'children', {}).values():
+                kind = getattr(child, 'type', '')
+                if kind == 'metric':
+                    out.append(('metric', child.label))
+                elif kind == 'plotly_chart':
+                    out.append(('chart', None))
+                elif getattr(child, 'key', None) in ('alignment_selector',):
+                    out.append(('toolbar', None))
+                walk(child)
+        walk(at._tree)
+        return out
+
+    def test_toolbar_then_chart_then_cards(self):
+        profiles, _ = load_uploaded_files([Upload(DATA / 'ok_device_cest.csv')])
+        at = page(profiles)
+        order = self.order(at)
+        first = lambda item: order.index(item)  # noqa: E731
+        self.assertLess(first(('toolbar', None)), first(('chart', None)))
+        self.assertLess(first(('chart', None)), first(('metric', 'PROFILES')))
+        self.assertEqual([label for kind, label in order if kind == 'metric'][:4],
+                         ['PROFILES', 'PROBES', 'DURATION RANGE', 'TEMPERATURE RANGE'])
+
+    def test_profiles_shown_box_is_themed_on_streamlit_166(self):
+        # Streamlit 1.66 wraps the multiselect tags in a new box drawn in its light-theme grey (white on the dark page).
+        source = open(APP, encoding='utf-8').read()
+        self.assertIn('[data-testid="stMultiSelect"] div:has(> [data-testid="stMultiSelectTagsContainer"])', source)
