@@ -4,7 +4,7 @@ All releases of Probe-2-Plot (called Cook Profile Dashboard up to v1.7.6), newes
 
 ## [1.8.3] - 2026-11-06
 
-Fix for the Check the import card. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+Fix for the Check the import card. Commit [`65c0cb2`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/65c0cb2).
 
 ### Fixed
 - **Check the import: the role explanations were printed across the card.** v1.8.1 put an explanation of every role into the tooltip of the ROLE column header. Its blank line ended the header's HTML, so the whole text was shown in the header row, pushing the columns down, and the header read `">Role`. Line breaks in the tooltip are now written as HTML line breaks: the header is one line again, and the explanations show, one role per line, when you point at ROLE.
@@ -592,7 +592,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
-[1.8.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/47ce58e...COMMIT
+[1.8.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/47ce58e...65c0cb2
 [1.8.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/ee3b467...47ce58e
 [1.8.1]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/7fe1339...ee3b467
 [1.8.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/d984c6d...7fe1339
