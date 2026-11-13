@@ -4,7 +4,7 @@ All releases of Probe-2-Plot (called Cook Profile Dashboard up to v1.7.6), newes
 
 ## [1.8.4] - 2026-11-13
 
-Overview cards under the chart (owner's request, 6 Nov); reviewed on branch design/v1.8.4-cards-below. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+Overview cards under the chart (owner's request, 6 Nov); reviewed on branch design/v1.8.4-cards-below. Commit [`8fe886a`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/8fe886a).
 
 ### Changed
 - **The overview cards (Profiles, Probes, Duration range, Temperature range) sit under the comparison chart.** The toolbar and Import notes are now right above Profiles shown and the Profile details and chart card, so the chart starts about 180 px higher.
@@ -606,7 +606,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
-[1.8.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/65c0cb2...COMMIT
+[1.8.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/65c0cb2...8fe886a
 [1.8.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/47ce58e...65c0cb2
 [1.8.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/ee3b467...47ce58e
 [1.8.1]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/7fe1339...ee3b467
