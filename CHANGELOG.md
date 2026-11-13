@@ -2,6 +2,20 @@
 
 All releases of Probe-2-Plot (called Cook Profile Dashboard up to v1.7.6), newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.8.4] - 2026-11-13
+
+Overview cards under the chart (owner's request, 6 Nov); reviewed on branch design/v1.8.4-cards-below. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Changed
+- **The overview cards (Profiles, Probes, Duration range, Temperature range) sit under the comparison chart.** The toolbar and Import notes are now right above Profiles shown and the Profile details and chart card, so the chart starts about 180 px higher.
+
+### Fixed
+- **"Profiles shown" box white in dark mode.** Streamlit 1.66 (since v1.8.1) wraps the selected profiles in a new box drawn in its light-theme grey; it now uses the dark card colour like the other inputs.
+
+### Tests
+- 2 more regression tests (114 in all): the page order (toolbar, chart, then the cards) and the themed Profiles shown box. All pass on Streamlit 1.66.1 and 1.60.0; contrast scan in dark and light mode, nothing new below 4.5:1.
+- (Since v1.8.3: GitHub Actions runs the tests on every push to main.)
+
 ## [1.8.3] - 2026-11-06
 
 Fix for the Check the import card. Commit [`65c0cb2`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/65c0cb2).
@@ -592,6 +606,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.8.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/65c0cb2...COMMIT
 [1.8.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/47ce58e...65c0cb2
 [1.8.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/ee3b467...47ce58e
 [1.8.1]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/7fe1339...ee3b467
