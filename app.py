@@ -5,7 +5,8 @@ import pandas as pd
 import streamlit as st
 import uuid
 
-from profile_loader import COLORS, load_uploaded_files
+from profile_loader import COLORS, file_fingerprint, load_uploaded_files
+import project_store
 from roles import LINE_STYLES, ROLES, ROLE_HELP, line_dash, line_style_name, default_probe, default_role, probe_colours, profile_name, unique_names
 from chart_builder import TEXT_SIZES, comparison, single, deviation, without_clock
 from analysis import compare
@@ -181,6 +182,9 @@ def clear_profiles():
         st.session_state.pop(key, None)
     for key in [k for k in st.session_state if str(k).startswith('roles_shown_')]:   # the Roles shown pills keep their own choice
         st.session_state.pop(key, None)
+    # v1.9.0: the next cook is a new project (the saved file or library entry of this one is not touched).
+    for key in ('source_files', 'project_id', 'project_name', 'project_date', 'project_notes', 'project_saved'):
+        st.session_state.pop(key, None)
 
 
 def clear_rename_error():
@@ -227,10 +231,196 @@ def import_files(files, keep):
     try:
         # Read the files, then let the user check columns, roles and probes before anything is added.
         new, messages = load_uploaded_files(files, existing=P if keep else [])
+        sources = st.session_state.setdefault('source_files', {})
+        for f in files:                                  # the originals, saved inside a project file (v1.9.0)
+            raw = f.getvalue()
+            sources.setdefault(file_fingerprint(raw), (f.name, raw))
         st.session_state.pending_import = {'profiles': new, 'messages': messages, 'keep': keep, 'batch': uuid.uuid4().hex[:8]}
         st.rerun()
     except Exception as exc:
         st.error(md(f'Import failed: {exc}'))
+
+
+# ---------------------------------------------------------------- projects (v1.9.0)
+# A project = the profiles with all their settings, the page and chart settings, a name, date and notes, and the
+# original files. "Save project file" downloads it everywhere; on the NAS (P2P_MODE=library) the app also keeps a
+# library of them in P2P_DATA/projects. The theme is a personal choice and is not saved with a project.
+LIBRARY = project_store.Library() if project_store.library_enabled() else None
+ALIGNMENT_CHOICES = ('Start', 'Peak', 'End', 'Clock')
+SMOOTHING_CHOICES = ('Off', '1 min', '5 min', '10 min')
+
+
+def _setting_rules():
+    """Saved setting -> check that the value is one the widget accepts (older or edited files are not trusted)."""
+    number = lambda low, high: (lambda v: isinstance(v, (int, float)) and not isinstance(v, bool) and low <= v <= high)  # noqa: E731
+    rules = {'alignment_selector': lambda v: v in ALIGNMENT_CHOICES, 'smoothing_selector': lambda v: v in SMOOTHING_CHOICES,
+             'grid_lines_toggle': lambda v: isinstance(v, bool), 'legend_toggle': lambda v: isinstance(v, bool),
+             'line_width_input': number(1.0, 5.0), 'chart_text_size': lambda v: v in TEXT_SIZES,
+             'target_count': lambda v: isinstance(v, int) and not isinstance(v, bool) and 0 <= v <= MAX_TARGETS,
+             'image_format_selector': lambda v: v in ('PNG', 'JPEG'), 'export_interval': lambda v: v in EXPORT_INTERVALS,
+             'compare_band': number(1.0, 100.0), 'compare_skip': lambda v: isinstance(v, int) and 0 <= v <= 600}
+    for i in range(MAX_TARGETS):
+        rules[f'target_name_{i}'] = lambda v: isinstance(v, str) and len(v) <= 60
+        rules[f'target_value_{i}'] = number(-50.0, 500.0)
+    return rules
+
+
+def current_settings():
+    state = st.session_state
+    settings = {key: state[key] for key in _setting_rules() if key in state}
+    settings['hidden_roles'] = sorted(state.get('hidden_roles', set()))
+    for key in ('visible_profile_ids', 'selected_profile_id', 'compare_setpoint_id', 'compare_probe_id'):
+        if state.get(key) is not None:
+            settings[key] = state[key]
+    return settings
+
+
+def project_defaults():
+    """Name and date for a new project: the day of the first reading ("Cook 25-Oct-26"), else today."""
+    starts = [p.data.timestamp.min() for p in st.session_state.profiles if 'timestamp' in p.data and not p.data.empty]
+    day = min(starts).date() if starts else dt.date.today()
+    return f'Cook {day:%d-%b-%y}', day
+
+
+def project_snapshot():
+    """Everything that goes into the project file, taken from the page now."""
+    state = st.session_state
+    project = {'id': state.setdefault('project_id', project_store.new_project_id()), 'name': state.get('project_name', ''),
+               'date': state.get('project_date'), 'notes': state.get('project_notes', '')}
+    return project, list(state.profiles), current_settings(), dict(state.get('source_files', {})), VERSION
+
+
+def project_file():
+    return project_store.project_bytes(*project_snapshot())
+
+
+def open_project(raw, source):
+    """Replace the page with a saved project. `source` says where it came from, for the note."""
+    try:
+        opened = project_store.read_project(raw)
+    except project_store.ProjectError as exc:
+        st.session_state.project_error = str(exc)
+        return
+    clear_profiles()
+    # Widget state of the page before (profile fields, the import review, comparisons) must not leak into the project.
+    for key in [k for k in st.session_state if str(k).startswith(('edit_', 'imp_', 'compare_', 'trim_all'))]:
+        st.session_state.pop(key, None)
+    st.session_state.pop('pending_import', None)
+    profiles = opened['profiles']
+    ids = [p.profile_id for p in profiles]
+    st.session_state.profiles = profiles
+    st.session_state.source_files = opened['sources']
+    settings, rules = opened['settings'], _setting_rules()
+    for key, ok in rules.items():
+        if key in settings and ok(settings[key]):
+            st.session_state[key] = settings[key]
+    st.session_state.hidden_roles = {r for r in settings.get('hidden_roles', []) if r in ROLES}
+    shown = [i for i in settings.get('visible_profile_ids', ids) or [] if i in ids]
+    st.session_state.visible_profile_ids = shown if 'visible_profile_ids' in settings else ids
+    selected = settings.get('selected_profile_id')
+    st.session_state.selected_profile_id = selected if selected in ids else ids[0]
+    for key in ('compare_setpoint_id', 'compare_probe_id'):
+        if settings.get(key) in ids:
+            st.session_state[key] = settings[key]
+    meta = opened['project']
+    st.session_state.project_id = meta['id']
+    st.session_state.project_name = meta['name']
+    st.session_state.project_date = meta['date'] or project_defaults()[1]
+    st.session_state.project_notes = meta['notes']
+    st.session_state.project_saved = opened['saved_at']
+    st.session_state.project_error = None
+    saved = opened['saved_at'][:16].replace('T', ' ')
+    st.session_state.import_messages = [
+        f'Opened project "{meta["name"]}" from {source}: {len(profiles)} profile(s), saved {saved} UTC'
+        + (f' with Probe-2-Plot {opened["app_version"]}.' if opened['app_version'] else '.')]
+
+
+def open_uploaded_project():
+    upload = st.session_state.get('project_upload')
+    if upload is not None:
+        open_project(upload.getvalue(), 'a project file')
+
+
+def save_to_library():
+    try:
+        LIBRARY.save(st.session_state.setdefault('project_id', project_store.new_project_id()), project_file())
+        st.session_state.project_saved = dt.datetime.now(dt.timezone.utc).isoformat(timespec='seconds')
+        st.session_state.project_error = None
+        st.session_state.library_note = f'Saved "{st.session_state.get("project_name", "")}" to the library.'
+    except (OSError, project_store.ProjectError) as exc:
+        st.session_state.project_error = f'Could not save to the library: {exc}'
+
+
+def open_from_library():
+    project_id = st.session_state.get('library_choice')
+    try:
+        open_project(LIBRARY.load(project_id), 'the library')
+    except (OSError, project_store.ProjectError) as exc:
+        st.session_state.project_error = str(exc)
+
+
+def delete_from_library():
+    project_id = st.session_state.get('library_choice')
+    if not st.session_state.get('library_confirm_delete'):
+        st.session_state.project_error = 'Tick "Yes, delete it" first.'
+        return
+    LIBRARY.delete(project_id)
+    st.session_state.library_confirm_delete = False
+    st.session_state.project_error = None
+    st.session_state.library_note = 'Deleted. (It is kept in the library folder under projects/deleted.)'
+    if st.session_state.get('project_id') == project_id:
+        st.session_state.pop('project_id', None)        # saving again makes a new library entry
+
+
+def project_panel():
+    """The body of the toolbar's Project pop-over."""
+    state = st.session_state
+    if state.get('project_error'):
+        st.error(md(state.project_error))
+    if state.get('library_note'):
+        st.success(md(state.pop('library_note')))
+    if P:
+        if 'project_name' not in state or 'project_date' not in state:
+            name, day = project_defaults()
+            state.setdefault('project_name', name)
+            state.setdefault('project_date', day)
+        st.text_input('Project name', key='project_name', max_chars=120)
+        st.date_input('Cook date', key='project_date', format='DD.MM.YYYY')
+        st.text_area('Notes', key='project_notes', height=90, max_chars=5000, placeholder='Wood, weather, what you changed, how it turned out...')
+        st.caption('A project keeps the original files, every profile with its role, probe, colour, line style, offset and '
+                   'trim, and the chart settings (not the theme). "Save project file" downloads one .p2p file; open it again '
+                   'below.')
+        # Streamlit builds the file on click in a worker without st.session_state, so the content is taken now.
+        snapshot = project_snapshot()
+        st.download_button('Save project file', lambda: project_store.project_bytes(*snapshot), project_store.file_name(state.get('project_name', '')),
+                           'application/zip', width='stretch', key='save_project_file')
+        if LIBRARY is not None:
+            st.button('Save to library', type='primary', width='stretch', key='save_project_library', on_click=save_to_library,
+                      help='Keeps the project in the app (on the NAS). Saving again updates the same entry.')
+            if state.get('project_saved'):
+                st.caption(md(f'Last saved {state.project_saved[:16].replace("T", " ")} UTC.'))
+        st.divider()
+    st.file_uploader('Open a project file', type=['p2p'], key='project_upload')
+    if P:
+        st.caption('Opening a project replaces the profiles on the page. Save them first if you want to keep them.')
+    st.button('Open project file', width='stretch', key='open_project_file', on_click=open_uploaded_project,
+              disabled=state.get('project_upload') is None)
+    if LIBRARY is not None:
+        st.divider()
+        saved = LIBRARY.projects()
+        if not saved:
+            st.caption('The library is empty.')
+            return
+        labels = {item['id']: ' · '.join(x for x in (item['name'], item['date'].strftime('%d-%b-%y') if item['date'] else '',
+                                                     f"{item['profiles']} profiles" if item['profiles'] else '') if x)
+                  for item in saved}
+        if state.get('library_choice') not in labels:
+            state.library_choice = saved[0]['id']
+        st.selectbox(f'Library ({len(saved)})', list(labels), format_func=labels.get, key='library_choice')
+        l1, l2 = st.columns(2, gap='small')
+        l1.button('Open', width='stretch', key='open_library_project', on_click=open_from_library)
+        l2.button('Delete', width='stretch', key='delete_library_project', on_click=delete_from_library)
+        st.checkbox('Yes, delete it', key='library_confirm_delete')
 
 
 if not P and not st.session_state.get('pending_import'):
@@ -246,8 +436,10 @@ if not P and not st.session_state.get('pending_import'):
 
 with toolbar_area:
     # Before the first import the start card holds the file box, so the toolbar has no Add files button.
-    widths = [1.35, 2.0, 2.05, 1.6, 1.25, 0.05, 1.0] if P else [2.0, 2.05, 1.6, 1.25, 1.4, 1.0]
+    widths = [1.15, 1.3, 2.0, 2.05, 1.55, 1.2, 0.05, 1.0] if P else [1.15, 2.0, 2.05, 1.55, 1.2, 1.4, 1.0]
     columns = st.columns(widths, gap='small', vertical_alignment='bottom')
+    with columns.pop(0).popover('Project', icon=':material/folder_open:', width='stretch'):
+        project_panel()
     c_add = columns.pop(0) if P else None
     c_align, c_smooth, c_opts, c_theme, _, c_clear = columns
     if P:
@@ -435,11 +627,14 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 [data-testid="stPopoverButton"][kind="primary"] * {{color:#fff!important;}}
 [data-testid="stPopoverBody"] {{background:var(--card)!important;border:1px solid var(--border)!important;color:var(--text)!important;min-width:360px;}}
 [data-testid="stPopoverBody"] label,[data-testid="stPopoverBody"] p {{color:var(--text)!important;}}
+[data-testid="stDateInputField"] input,[data-testid="stDateInputField"] *,[data-testid="stTextAreaRootElement"] textarea {{color:var(--text)!important;-webkit-text-fill-color:var(--text)!important;opacity:1!important;}}
+[data-testid="stPopoverBody"] [data-testid="stBaseButton-primary"],[data-testid="stPopoverBody"] [data-testid="stBaseButton-primary"] * {{color:#fff!important;-webkit-text-fill-color:#fff!important;}}
+[data-testid="stTextAreaRootElement"] textarea::placeholder {{color:var(--muted)!important;-webkit-text-fill-color:var(--muted)!important;}}
 .st-key-toolbar_card [data-testid="stButtonGroup"] button {{padding-left:.6rem!important;padding-right:.6rem!important;white-space:nowrap;}}
 /* Narrow windows: Profile details row 1 (8 fields since v1.8.2) wraps instead of squeezing each field */
 @media (max-width:1180px) {{.st-key-details_row1 > [data-testid="stHorizontalBlock"], .st-key-details_row1 [data-testid="stHorizontalBlock"] {{flex-wrap:wrap!important;row-gap:.6rem;}} .st-key-details_row1 [data-testid="stColumn"] {{flex:1 1 150px!important;min-width:150px!important;width:auto!important;}} .st-key-details_row1 [data-testid="stColumn"]:has([data-testid="stColorPicker"]) {{flex:0 0 64px!important;min-width:64px!important;}}}}
-/* Narrow windows: the toolbar wraps onto a second row instead of cutting buttons off */
-@media (max-width:1180px) {{.st-key-toolbar_card [data-testid="stHorizontalBlock"] {{flex-wrap:wrap!important;row-gap:.6rem;}} .st-key-toolbar_card [data-testid="stColumn"] {{flex:0 1 auto!important;width:auto!important;min-width:fit-content!important;}}}}
+/* Narrow windows (below 1320 px since v1.9.0 added Project): the toolbar wraps onto a second row instead of cutting buttons off */
+@media (max-width:1320px) {{.st-key-toolbar_card [data-testid="stHorizontalBlock"] {{flex-wrap:wrap!important;row-gap:.6rem;}} .st-key-toolbar_card [data-testid="stColumn"] {{flex:0 1 auto!important;width:auto!important;min-width:fit-content!important;}}}}
 /* Buttons: every action button gets explicit colours, so text never inherits a colour meant for another background */
 [data-testid="stBaseButton-secondary"],[data-testid="stBaseButton-primary"],.stDownloadButton>button {{border-radius:10px!important;font-weight:650;min-height:2.65rem;box-shadow:none!important;}}
 [data-testid="stBaseButton-secondary"],.stDownloadButton>button {{background:var(--card-alt)!important;border:1px solid var(--border)!important;color:var(--text)!important;}}
@@ -468,7 +663,7 @@ h1,h2,h3,p,label,[data-testid="stMarkdownContainer"] {{color:var(--text);}}
 [data-baseweb="tag"] span,[data-testid="stMultiSelect"] [data-tag] span {{color:{colors['tag_text']}!important;font-weight:600!important;}}
 [data-baseweb="tag"] svg,[data-testid="stMultiSelect"] [data-tag] svg {{color:{colors['muted']}!important;fill:{colors['muted']}!important;}}
 [data-baseweb="select"] {{color:var(--text)!important;}}
-[data-testid="stMultiSelect"] div:has(> [data-testid="stMultiSelectTagsContainer"]),[data-testid="stSelectbox"] div:has(> input),[data-testid="stMultiSelect"] div:has(> input),[data-testid="stNumberInput"] div:has(> input),[data-testid="stTextInputRootElement"] {{background:var(--card-alt)!important;border-color:var(--border)!important;border-radius:10px!important;}}
+[data-testid="stDateInputField"],[data-testid="stDateInputField"] input,[data-testid="stTextAreaRootElement"],[data-testid="stTextAreaRootElement"] textarea,[data-testid="stMultiSelect"] div:has(> [data-testid="stMultiSelectTagsContainer"]),[data-testid="stSelectbox"] div:has(> input),[data-testid="stMultiSelect"] div:has(> input),[data-testid="stNumberInput"] div:has(> input),[data-testid="stTextInputRootElement"] {{background:var(--card-alt)!important;border-color:var(--border)!important;border-radius:10px!important;}}
 [data-testid="stSelectbox"] input,[data-testid="stNumberInput"] input,[data-testid="stTextInputField"] {{color:var(--text)!important;-webkit-text-fill-color:var(--text)!important;}}
 [data-testid="stTooltipIcon"],[data-testid="stNumberInput"] button {{color:var(--muted)!important;}}
 [data-testid="stTooltipIcon"] svg,[data-testid="stNumberInput"] button svg {{color:var(--muted)!important;fill:var(--muted)!important;}}

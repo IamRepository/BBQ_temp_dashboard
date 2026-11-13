@@ -66,7 +66,7 @@ class MainInteractions(unittest.TestCase):
         self.at = page(self.profiles)
 
     def key(self, widgets, suffix):
-        return next(w for w in widgets if w.key and w.key.endswith(suffix))
+        return next(w for w in widgets if w.key and w.key.startswith('edit_') and w.key.endswith(suffix))
 
     def test_version_and_overview(self):
         from version import VERSION
@@ -128,7 +128,7 @@ class V166Interactions(unittest.TestCase):
 
     def test_rename_warning_clears_on_another_profile(self):   # L1
         names = [p.name for p in self.profiles]
-        next(t for t in self.at.text_input if t.key and t.key.endswith('_name')).set_value(names[1]).run()
+        next(t for t in self.at.text_input if t.key and t.key.startswith('edit_') and t.key.endswith('_name')).set_value(names[1]).run()
         self.assertIn('Profile names must be unique.', [w.value for w in self.at.warning])
         self.at.selectbox(key='selected_profile_id').set_value(self.profiles[2].profile_id).run()
         self.assertNotIn('Profile names must be unique.', [w.value for w in self.at.warning])
@@ -193,7 +193,7 @@ class V167Interactions(unittest.TestCase):
         self.assertTrue(any(c.startswith(name + '  |  ') for c in captions(self.at)), [c for c in captions(self.at)])
 
     def test_download_button_present(self):   # M6: the file is built on click
-        self.assertEqual(self.at.get('download_button')[0].proto.label, 'Download Excel file')
+        self.assertEqual(self.at.get('download_button')[1].proto.label, 'Download Excel file')   # [0] = Save project file (v1.9.0)
 
 
 class V168Layout(unittest.TestCase):
@@ -545,8 +545,8 @@ class V180Toolbar(unittest.TestCase):
         self.assertEqual(problems(at), [])
         self.assertEqual(len(at.sidebar.children), 0)
         self.assertTrue(any('Start: add your cook files' in m.value for m in at.markdown))
-        self.assertEqual(len(at.get('file_uploader')), 1)
-        self.assertEqual([p.proto.popover.label for p in at.get('popover')], ['Chart options', 'Clear all'])     # no Add files before the first import
+        self.assertEqual(len(at.get('file_uploader')), 2)          # cook files + Open a project file (v1.9.0)
+        self.assertEqual([p.proto.popover.label for p in at.get('popover')], ['Project', 'Chart options', 'Clear all'])     # no Add files before the first import
         self.assertTrue(at.button(key='clear_profiles_button').disabled)
 
     def test_toolbar_after_import(self):
@@ -554,8 +554,8 @@ class V180Toolbar(unittest.TestCase):
         at = page(profiles)
         self.assertEqual(problems(at), [])
         self.assertFalse(any('Start: add your cook files' in m.value for m in at.markdown))
-        self.assertEqual([p.proto.popover.label for p in at.get('popover')], ['Add files', 'Chart options', 'Clear all'])
-        self.assertEqual(len(at.get('file_uploader')), 1)                                   # inside Add files
+        self.assertEqual([p.proto.popover.label for p in at.get('popover')], ['Project', 'Add files', 'Chart options', 'Clear all'])
+        self.assertEqual(len(at.get('file_uploader')), 2)                                   # Add files + Open a project file
         for key in ('alignment_selector', 'smoothing_selector', 'theme_selector', 'chart_text_size', 'image_format_selector'):
             self.assertTrue(any(w.key == key for w in at.get('button_group')), key)
         at.toggle(key='grid_lines_toggle').set_value(False).run()                             # Chart options still work

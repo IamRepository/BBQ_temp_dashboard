@@ -1,0 +1,9 @@
+data/
+.git/
+.github/
+.venv/
+__pycache__/
+*.pyc
+*.p2p
+tests/
+.env

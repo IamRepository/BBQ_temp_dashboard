@@ -1,0 +1,26 @@
+# Synology: Container Manager -> Project -> Create, path = this folder (docker/probe-2-plot). See docs/NAS.md.
+services:
+  probe-2-plot:
+    build: .
+    # The tag is the app version: a new version has a tag Container Manager hasn't seen, so "Build" really
+    # builds (with a fixed name it reuses the old image; found with the Bresaola Tracker, 27 Oct 2026).
+    image: probe-2-plot:1.9.0
+    container_name: probe-2-plot
+    # Host networking: the app listens straight on the NAS's own address. Port 8522: Synology MailPlus drops
+    # outside connections to 8500-8507; Bresaola uses 8520 and the Brisket Analyzer plan 8521.
+    # Open http://<NAS IP>:8522
+    network_mode: host
+    command: ["streamlit", "run", "app.py", "--server.port=8522", "--server.address=0.0.0.0",
+              "--server.headless=true", "--browser.gatherUsageStats=false"]
+    volumes:
+      - ./data:/data         # the project library (data/projects/*.p2p) lives here, outside the container
+    environment:
+      P2P_MODE: library
+      P2P_DATA: /data
+      TZ: Europe/Berlin
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8522/_stcore/health')"]
+      interval: 60s
+      timeout: 5s
+      start_period: 30s
+    restart: unless-stopped

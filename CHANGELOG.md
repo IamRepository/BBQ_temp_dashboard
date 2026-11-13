@@ -2,6 +2,36 @@
 
 All releases of Probe-2-Plot (called Cook Profile Dashboard up to v1.7.6), newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.9.0] - 2026-11-13
+
+Projects: save a cook and open it again later, ready for the move to the NAS. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Added
+- **Project button in the toolbar.** A project holds:
+  - the original uploaded files, untouched;
+  - every profile exactly as on the page: its readings, display name, probe, channel, role, colour, line style, time offset, trim window and setpoint flag;
+  - the page and chart settings: profiles shown, the selected profile, timeline alignment, smoothing, grid lines, legend, line width, chart text size, target lines (names and temperatures), image type, export interval, roles switched off, and the setpoint comparison; not the theme (a personal choice);
+  - a project name (default "Cook 25-Oct-26", from the day of the first reading), a cook date and notes.
+- **Save project file / Open a project file.** Saving downloads one `.p2p` file (a zip with `project.json`, the readings and the originals). Opening it replaces the page with the project as it was saved, built from the stored readings, so it looks the same even after a later change to the file import. Works on Streamlit Cloud, on a laptop and on the NAS; a file saved in one place opens in the others.
+- **Project library (library mode, for the NAS).** With `P2P_MODE=library` the Project panel also has *Save to library* (saving again updates the same entry) and a list of saved cooks with *Open* and *Delete* (delete asks for a tick first and moves the file to `projects/deleted/`, so it can be restored). The library is one `.p2p` file per project in `P2P_DATA/projects/`; every write goes to a temporary file first and is then renamed into place, so a crash or full disk never leaves half a project, and a damaged file is listed as damaged instead of breaking the list. Library mode is off on Streamlit Cloud: the public app would show your cooks to anyone, and Cloud loses files when it restarts.
+- **NAS files:** `Dockerfile`, `compose.yaml` (port 8522, host networking, `./data:/data`, library mode on, image tag = app version, health check, restart unless stopped), `.dockerignore` and `docs/NAS.md` (first install, updates, moving projects between Cloud and the NAS, restoring a deleted project). Same setup as the Bresaola Tracker on the NAS. The Docker build itself could not be tested here; the first build happens on the NAS.
+
+### Security
+- An opened project file is treated as untrusted: it must be a Probe-2-Plot project of a format this version knows (a newer one is refused with a message), with at most 400 entries, 400 MB unpacked and 100 profiles; only the expected paths inside it are read, nothing is unpacked to disk, every saved setting is checked against what its control accepts before it is applied, and names are shown as text. The library accepts only its own 12-character ids, so no path outside `projects/` can be reached, and it never stores a file it could not open again.
+
+### Changed
+- The toolbar wraps onto two rows below 1,320 px (was 1,180 px), to make room for the Project button.
+- Notes and date fields, and primary buttons inside the toolbar panels, use the theme's colours (Streamlit 1.66 drew the date and notes boxes in its light grey, and the text of a primary button in a panel turned dark in light mode).
+- Clear all also starts a new project (the saved file or library entry of the cleared cook is not touched).
+
+### Tests
+- 16 more tests (130 in all), in `tests/test_projects.py`: the file round trip (readings bit for bit, every profile field, settings, name, date, notes, originals), only the cook's own originals saved, refused files (not a zip, no project.json, damaged JSON, another format, a newer format, no profiles, a path outside the readings folder, a zip that unpacks to more than 400 MB), safe download names, the library (save, list, update, delete to the bin, no temporary files left, never stores a bad file, ids that try to leave the folder, a damaged file in the list), and through the app: change settings, *Save to library*, *Clear all*, *Open* (the page comes back the same, with no warnings), delete needs the tick, opening a project on the empty page, no library controls without library mode, and the NAS files (image tag = version, library mode, port, volume, data kept out of git and the image). Three older tests now find controls by key instead of position.
+- An 18-hour cook logged every second with 6 probes: a 3.2 MB project file, saved in about 2 s and opened in 0.3 s.
+- All tests pass on Streamlit 1.66.1 and 1.60.0. Browser: save a file, save to the library, Clear all, open the downloaded file; contrast scan in dark and light mode with the Project panel open, nothing below 4.5:1; toolbar checked at 1,000 to 1,440 px.
+
+### Upgrade note
+- Reboot the app on Streamlit Community Cloud after deploying (new module `project_store.py`).
+
 ## [1.8.4] - 2026-11-13
 
 Overview cards under the chart (owner's request, 6 Nov); reviewed on branch design/v1.8.4-cards-below. Commit [`8fe886a`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/8fe886a).
@@ -606,6 +636,7 @@ First Streamlit version. Commits [`8711111`](https://github.com/IamRepository/BB
 
 A first React and Vite version ([`480c979`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/480c979)) that ran in the browser: CSV and Excel upload, automatic column detection, an elapsed-time chart, and Celsius or Fahrenheit display. It was replaced by the Streamlit version the same day.
 
+[1.9.0]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/8fe886a...COMMIT
 [1.8.4]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/65c0cb2...8fe886a
 [1.8.3]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/47ce58e...65c0cb2
 [1.8.2]: https://github.com/IamRepository/BBQ_temp_dashboard/compare/ee3b467...47ce58e
