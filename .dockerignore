@@ -7,3 +7,6 @@ __pycache__/
 *.p2p
 tests/
 .env
+scripts/
+update.log
+update.failed

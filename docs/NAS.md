@@ -32,9 +32,37 @@ the stored readings, so it shows exactly what was saved even after a later impor
 
 ## Updating to a new version
 
-Until the nightly auto-update (as for Bresaola, from a `stable` branch) is set up: replace the files in
-`docker/probe-2-plot` with the new release (keep the `data` folder), then Container Manager, Project,
-`probe-2-plot`, Action, Build. The library is not touched: it lives in `data/`, outside the image.
+**By hand:** replace the files in `docker/probe-2-plot` with the new release (keep the `data` folder), then
+Container Manager, Project, `probe-2-plot`, Action, Build. The library is not touched: it lives in `data/`,
+outside the image.
+
+**Automatically (from v1.9.1), as for Bresaola:** the NAS checks the `stable` branch on GitHub every night and
+updates itself. `stable` only moves when a release has passed the tests and the owner has said OK
+(`git push origin main:stable`), so the NAS never runs an unchecked `main`. The repository is public, so the NAS
+needs no key or password.
+
+One-time setup:
+1. Put `scripts/nas-update.sh` in `docker/probe-2-plot/scripts/` (File Station, create the folder `scripts`, upload the file).
+2. Task Scheduler, Create, Scheduled Task, User-defined script: name `probe-2-plot-update`, user **root**, daily at
+   **04:05** (Bresaola updates at 04:00, so the two never build at the same time), script:
+
+        sh /volume1/docker/probe-2-plot/scripts/nas-update.sh
+
+   If your shared folder `docker` isn't on volume1, use the path shown in File Station (right-click the folder,
+   Properties, Location). Task Settings: tick **Send run details by email** and **only when the script
+   terminates abnormally**.
+3. Select the task, **Run** once. The first run turns the folder into a git checkout and rebuilds once.
+   `docker/probe-2-plot/update.log` should end with `OK: <version> is running`; a second Run says `up to date`.
+
+What a run does: asks GitHub for the newest commit on `stable`; if there is nothing new it stops. Otherwise it
+copies the library to `data/pre-update/projects-<date>` (keeps the last 5), checks out the new files, rebuilds
+and restarts, then checks that the web server answers and that the container reports the new version and can
+read the library. If that fails it goes back to the previous version (its image is kept), remembers the bad
+commit so it isn't retried every night, and exits with an error so DSM mails you.
+
+A failure that was only passing (no internet during the build, say): delete `update.failed` and Run the task
+again. Stopping it: untick "Enabled" on the task. Local edits to `compose.yaml` are replaced by an update; a copy
+of the old one is kept in `data/pre-update/`.
 
 ## Moving projects
 

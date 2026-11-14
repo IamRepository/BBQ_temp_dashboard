@@ -5,3 +5,5 @@ __pycache__/
 .streamlit/secrets.toml
 data/
 *.p2p
+update.log
+update.failed

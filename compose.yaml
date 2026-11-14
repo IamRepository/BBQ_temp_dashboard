@@ -4,7 +4,7 @@ services:
     build: .
     # The tag is the app version: a new version has a tag Container Manager hasn't seen, so "Build" really
     # builds (with a fixed name it reuses the old image; found with the Bresaola Tracker, 27 Oct 2026).
-    image: probe-2-plot:1.9.0
+    image: probe-2-plot:1.9.1
     container_name: probe-2-plot
     # Host networking: the app listens straight on the NAS's own address. Port 8522: Synology MailPlus drops
     # outside connections to 8500-8507; Bresaola uses 8520 and the Brisket Analyzer plan 8521.

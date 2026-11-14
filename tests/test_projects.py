@@ -256,3 +256,92 @@ class Deployment(unittest.TestCase):
             lines = (self.ROOT / name).read_text().split()
             self.assertIn('data/', lines, name)
             self.assertIn('*.p2p', lines, name)
+
+
+class AutoUpdateScript(unittest.TestCase):
+    """scripts/nas-update.sh, run against a local git repository and a stand-in `docker` (no network, no Docker)."""
+    ROOT = Path(__file__).resolve().parents[1]
+
+    def setUp(self):
+        import shutil
+        import subprocess
+        import tempfile
+        self.tmp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, self.tmp, True)
+        self.git = lambda *a, cwd=None: subprocess.run(['git', '-c', 'user.name=t', '-c', 'user.email=t@t', *a], cwd=cwd,
+                                                       check=True, capture_output=True, text=True).stdout.strip()
+        self.origin = self.tmp / 'origin'
+        self.origin.mkdir()
+        self.git('init', '-q', '-b', 'stable', cwd=self.origin)
+        self.release('1.0.0')
+        # the NAS folder as it comes from a ZIP: the same files, no .git, plus the library
+        self.app = self.tmp / 'nas' / 'probe-2-plot'
+        shutil.copytree(self.origin, self.app, ignore=shutil.ignore_patterns('.git'))
+        (self.app / 'scripts').mkdir(exist_ok=True)
+        shutil.copy(self.ROOT / 'scripts' / 'nas-update.sh', self.app / 'scripts' / 'nas-update.sh')
+        (self.app / 'data' / 'projects').mkdir(parents=True)
+        (self.app / 'data' / 'projects' / 'aaaaaaaaaaaa.p2p').write_bytes(b'precious')
+        # stand-ins: docker reports the version of the checked-out files (or a wrong one for 9.9.9), curl succeeds
+        self.bin = self.tmp / 'bin'
+        self.bin.mkdir()
+        (self.bin / 'docker').write_text(
+            '#!/bin/sh\ncase "$1" in\n  exec) v=$(sed -n "s/^VERSION *= *\'\\([^\']*\\)\'.*/\\1/p" "$APP_DIR/version.py"); '
+            '[ "$v" = 9.9.9 ] && v=0.0.0; echo "$v";;\n  images) ;;\n  *) exit 0;;\nesac\n')
+        (self.bin / 'curl').write_text('#!/bin/sh\nexit 0\n')
+        for f in ('docker', 'curl'):
+            (self.bin / f).chmod(0o755)
+
+    def release(self, version):
+        (self.origin / 'version.py').write_text(f"VERSION = '{version}'\n")
+        (self.origin / 'compose.yaml').write_text(f'services:\n  probe-2-plot:\n    image: probe-2-plot:{version}\n')
+        self.git('add', '-A', cwd=self.origin)
+        self.git('commit', '-q', '-m', f'v{version}', cwd=self.origin)
+
+    def run_script(self):
+        import os
+        import subprocess
+        env = dict(os.environ, PATH=f'{self.bin}:{os.environ["PATH"]}', REPO=str(self.origin), WAIT='1',
+                   APP_DIR=str(self.app))
+        r = subprocess.run(['sh', str(self.app / 'scripts' / 'nas-update.sh')], env=env, capture_output=True, text=True)
+        return r.returncode, r.stdout + r.stderr
+
+    def test_first_run_update_then_up_to_date_then_bad_version_rolls_back(self):
+        code, out = self.run_script()
+        self.assertEqual(code, 0, out)
+        self.assertIn('OK: 1.0.0 is running', out)
+        # the library is untouched and a copy was made first
+        self.assertEqual((self.app / 'data' / 'projects' / 'aaaaaaaaaaaa.p2p').read_bytes(), b'precious')
+        copies = list((self.app / 'data' / 'pre-update').glob('projects-*/aaaaaaaaaaaa.p2p'))
+        self.assertEqual(len(copies), 1)
+
+        code, out = self.run_script()
+        self.assertEqual((code, 'up to date' in out), (0, True), out)
+
+        self.release('1.0.1')
+        code, out = self.run_script()
+        self.assertEqual(code, 0, out)
+        self.assertIn('OK: 1.0.1 is running', out)
+
+        # a version whose container does not report itself correctly: back to 1.0.1, and not retried
+        self.release('9.9.9')
+        code, out = self.run_script()
+        self.assertEqual(code, 1, out)
+        self.assertIn('back on', out)
+        self.assertIn('1.0.1', (self.app / 'version.py').read_text())
+        self.assertTrue((self.app / 'update.failed').exists())
+        code, out = self.run_script()
+        self.assertEqual(code, 1)
+        self.assertIn('not trying again', out)
+        self.assertEqual((self.app / 'data' / 'projects' / 'aaaaaaaaaaaa.p2p').read_bytes(), b'precious')
+
+        # the next release replaces the failed one
+        self.release('1.0.2')
+        code, out = self.run_script()
+        self.assertEqual(code, 0, out)
+        self.assertFalse((self.app / 'update.failed').exists())
+
+    def test_runtime_files_stay_out_of_git_and_image(self):
+        for name in ('.gitignore', '.dockerignore'):
+            lines = (self.ROOT / name).read_text().split()
+            self.assertIn('update.log', lines, name)
+            self.assertIn('update.failed', lines, name)

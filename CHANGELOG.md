@@ -2,6 +2,23 @@
 
 All releases of Probe-2-Plot (called Cook Profile Dashboard up to v1.7.6), newest first. Dates are when each release reached GitHub. The running version is shown under the page title and stored in `version.py`.
 
+## [1.9.1] - 2026-11-14
+
+Nightly auto-update for the NAS. The app itself is unchanged. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+
+### Added
+- **`scripts/nas-update.sh`** for the DSM Task Scheduler (task `probe-2-plot-update`, daily 04:05, user root). It follows the `stable` branch on GitHub (public repository, read-only, no key), and for a new version: copies the project library to `data/pre-update/` (last 5 kept), checks out the files, rebuilds and restarts, then checks that the web server answers and that the container reports the new version and can read the library. If the check fails it goes back to the previous version, remembers the bad commit (`update.failed`) so it isn't retried every night, and exits with an error so DSM can mail you. Same design as the Bresaola Tracker's script. `data/` is never touched by git.
+- **`docs/NAS.md`**: the one-time setup of the update task and what a run does.
+
+### Changed
+- `.gitignore` and `.dockerignore`: `update.log` and `update.failed`; the image no longer contains `scripts/`.
+
+### Tests
+- 2 more tests (132 in all). The script runs against a local git repository and a stand-in `docker`: first run from a ZIP-style folder (library kept, copy made), "up to date", a normal update, a version whose container reports the wrong version (rolled back, not retried, library kept), and the next release replacing the failed one.
+
+### Upgrade note
+- Streamlit Cloud needs no reboot (no app module changed).
+
 ## [1.9.0] - 2026-11-13
 
 Projects: save a cook and open it again later, ready for the move to the NAS. Commit [`1ff36cb`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/1ff36cb).
