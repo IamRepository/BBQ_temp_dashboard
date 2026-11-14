@@ -4,7 +4,7 @@ All releases of Probe-2-Plot (called Cook Profile Dashboard up to v1.7.6), newes
 
 ## [1.9.1] - 2026-11-14
 
-Nightly auto-update for the NAS. The app itself is unchanged. Commit [`COMMIT`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/COMMIT).
+Nightly auto-update for the NAS. The app itself is unchanged. Commit [`f4699f5`](https://github.com/IamRepository/BBQ_temp_dashboard/commit/f4699f5).
 
 ### Added
 - **`scripts/nas-update.sh`** for the DSM Task Scheduler (task `probe-2-plot-update`, daily 04:05, user root). It follows the `stable` branch on GitHub (public repository, read-only, no key), and for a new version: copies the project library to `data/pre-update/` (last 5 kept), checks out the files, rebuilds and restarts, then checks that the web server answers and that the container reports the new version and can read the library. If the check fails it goes back to the previous version, remembers the bad commit (`update.failed`) so it isn't retried every night, and exits with an error so DSM can mail you. Same design as the Bresaola Tracker's script. `data/` is never touched by git.
